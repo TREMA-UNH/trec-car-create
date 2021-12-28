@@ -1,55 +1,44 @@
-# `mediawiki-annotate`
+# `trec-car-create`
 
 This is a set of tools for extracting text and document structure from MediaWiki
-documents. The `wiki-annotate` executable expects MediaWiki
+documents and related collections. Converting Wikipedia expects MediaWiki
 [XML dump data](https://www.mediawiki.org/wiki/Help:Export) on
-`stdin` and produces a stream of CBOR documents on `stdout`.
+`stdin` and produces CBOR documents.
+
+See <https://trec-car.cs.unh.edu> for details on the data model, motivation, and background.
+
+For a script to ease the conversion and automatically download the right dumps, clone <git@github.com:TREMA-UNH/trec-car-release> and adjust the language settings.
 
 ## Installation
 
  1. Clone this repository
- 2. Checkout the submodules: `cd mediawiki-annotate; git submodule update --init --recursive`
+ 2. Checkout the submodules: `cd trec-car-create; git submodule update --init --recursive`
 
+Install nix (not nixOS!) from <https://nixos.org/download.html>
 
 ### With Nix
 
-Simply type `nix build -f . binaries` 
+To build, type `nix build -A binaries -o car-bin` 
 
-Or alternatively: for parallel builds on `$n` cores use `nix build --max-jobs $n -f . binaries`
+Or alternatively: for parallel builds on `$n` cores add `--max-jobs $n ` to the command line
 
-This will produce a `./result` directory containing all tools in the package.
+This will produce the directory `./car-bin/bin`  containing all tools needed to create your own trec-car dumps and datasers.
+
+
+
+<!-- 
+### Does not work yet:
 
 To speed up the build you can also use the [Cachix](https://cachix.org/) [cache](https://trec-car-tools.cachix.org/),
 ```bash
 $ cachix use trec-car-tools
 ```
-
-### Manually
-You'll need `ghc >=8.0.1` and `cabal-install >=0.24`.
-
-Additionally, you will need to install a few native dependencies (citing
-Debian/Ubuntu package names),
-
-```
-sudo apt-get install libicu-dev zlib1g-dev libexpat1-dev libpq-dev liblzma-dev
-```
-
-Then,
-
- 3. Build it: `cabal new-build`
- 4. Move the executables to `bin/`: `mkdir -p bin; for i in $(find dist-newstyle/build/ -executable -a -type f -a -! -iname '*.so'); do ln -fs $(pwd)/$i bin/$(basename $i); done`
- 
-The `wiki-annotate` executable will be found in the `bin/` directory. You can
-either add this directory to `PATH` or invoke it with an absolute path.
-
-## CBOR serialization
-
-The intermediate CBOR representation consists of a stream of packed CBOR objects of the form,
-
-TODO
-
+--> 
 
 ## Utilities
+
+
+All utilities print their usage instructions when run with `-h`. Some have further command for which you get further help, such as `trec-car-dump pages -h`. 
 
 * `trec-car-import`: Produce a CBOR annotations file from a Mediawiki
   XML dump file.

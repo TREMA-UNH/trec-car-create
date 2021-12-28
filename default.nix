@@ -24,23 +24,12 @@ let
         mediawiki-parser     = self.callCabal2nix "mediawiki-parser" (localDir ./mediawiki-parser) {};
         mediawiki-import     = self.callCabal2nix "mediawiki-import" (localDir ./mediawiki-import) {};
         mediawiki-convert    = self.callCabal2nix "mediawiki-convert" (localDir ./mediawiki-convert) {};
-        car-baselines        = self.callCabal2nix "car-baselines" (localDir ./car-baselines) {};
         filter-duplicates    = self.callCabal2nix "filter-duplicates" (localDir ./filter-duplicates) {};
-        assessment-interface = self.callCabal2nix "trec-car-annotation-interface" (localDir ./assessment-interface) {};
         assessment-eval      = self.callCabal2nix "assessment-eval" (localDir ./assessment-eval) {};
-        annotate-server      = self.callCabal2nix "annotate-server" (localDir ./assessment-interface/annotation/server) {};
         graph-algorithms     = self.callCabal2nix "graph-algorithms" (localDir ./trec-car-tools-haskell/simplir/graph-algorithms) {};
-        db-export            = self.callCabal2nix "db-export" (localDir ./db-export) {};
-        evalmetrics          = self.callCabal2nix "evalmetrics" (localDir ./evalmetrics) {};
-        wordnet-export       = nixpkgs.callPackage (import ./wordnet-export) { haskellPackages = self; };
         multilang-car        = self.callCabal2nix "multilang-car" (localDir ./multilang-car) {};
         tqa-import           = self.callCabal2nix "tqa-import" (localDir ./tqa-import) {};
-        trec-news            = self.callCabal2nix "trec-news" (localDir ./trec-news) {};
-        epfl-section-recommendation = self.callCabal2nix "epfl-section-recommendation" (localDir ./epfl-section-recommendation) {};
-        dbpedia-entity-import= self.callCabal2nix "dbpedia-entity-import" (localDir ./dbpedia-entity-import) {};
-        tag-me               = self.callCabal2nix "tag-me" (localDir ./tag-me) {};
         miso-types           = self.callCabal2nix "miso-types" (localDir ./miso-types) {};
-        eal-tools            = self.callCabal2nix "eal-tools" (localDir ./eal-tools) {};
 
         intset = self.callCabal2nix "intset" ./vendor/intset {};
         hpc-coveralls = doJailbreak (self.callCabal2nix "hpc-coveralls" (nixpkgs.fetchFromGitHub {
@@ -61,7 +50,6 @@ let
   };
 in {
   pkgs = nixpkgs;
-  inherit (haskellPackages.wordnet-export.passthru) ukb;
   inherit haskellPackages haskellOverrides;
   inherit (haskellPackages) trecCarPackages;
   inherit (simplirNix) simplirPackages trec-eval;

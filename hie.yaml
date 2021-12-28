@@ -21,9 +21,6 @@ cradle:
     - path: "assessment-eval/.//AssessmentTime.hs"
       component: "assessment-eval:exe:assessment-time"
 
-    - path: "db-export/.//DbExport.hs"
-      component: "db-export:exe:db-export"
-
     - path: "mediawiki-convert/src"
       component: "lib:mediawiki-convert"
 
@@ -257,17 +254,6 @@ cradle:
 
     - path: "vendor/pinch/tests"
       component: "pinch:test:pinch-spec"
-
-    - path: "eal-tools/.//EalVerify.hs"
-      component: "eal-tools:exe:eal-verify"  
       
-    - path: "eal-tools/.//EalStats.hs"
-      component: "eal-tools:exe:eal-stats"  
-
-    - path: "eal-tools/.//EalRender.hs"
-      component: "eal-tools:exe:eal-render"  
-
-    - path: "eal-tools/src"
-      component: "lib:eal-tools" 
 
       

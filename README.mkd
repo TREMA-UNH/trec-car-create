@@ -7,7 +7,7 @@ documents and related collections. Converting Wikipedia expects MediaWiki
 
 See <https://trec-car.cs.unh.edu> for details on the data model, motivation, and background.
 
-For a script to ease the conversion and automatically download the right dumps, clone <git@github.com:TREMA-UNH/trec-car-release> and adjust the language settings.
+For a script to ease the conversion and automatically download the right dumps, clone <https://github.com/TREMA-UNH/trec-car-tools> and adjust the language settings.
 
 ## Installation
 
@@ -53,4 +53,4 @@ All utilities print their usage instructions when run with `-h`. Some have furth
 
 ## Issues
 
-Issues are tracked in [GitLab](https://git.smart-cactus.org/ben/mediawiki-annotate).
+Issues are tracked on <https://github.com/TREMA-UNH/trec-car-create/issues>.

@@ -17,29 +17,10 @@ import System.Environment
 import Control.Monad
 
 import qualified Data.JsonStream.Parser as JS
+import CAR.Types (WikiDataId, SiteId, PageName)
 
 newtype Lang = Lang T.Text
              deriving (Show, Eq, Ord, Hashable, FromJSON, FromJSONKey, CBOR.Serialise)
-
-newtype ItemId = ItemId Int
-                 deriving (Show, Eq, Ord, Hashable, CBOR.Serialise)
-
-instance FromJSON ItemId where
-    parseJSON = withText "item id" $ maybe (fail "invalid item id") pure . readItemId
-
-readItemId :: T.Text -> Maybe ItemId
-readItemId s
-  | Just rest <- T.stripPrefix "Q" $ T.strip s
-  , Right (n, _) <- TR.decimal rest
-  = Just $ ItemId n
-  | otherwise
-  = Nothing
-
-newtype SiteId = SiteId T.Text
-               deriving (Show, Eq, Ord, Hashable, FromJSON, ToJSON, FromJSONKey, CBOR.Serialise)
-
-newtype PageName = PageName T.Text
-               deriving (Show, Eq, Ord, Hashable, FromJSON, ToJSON, CBOR.Serialise)
 
 data EntityType = Item
                 deriving (Show, Generic)
@@ -51,7 +32,7 @@ instance FromJSON EntityType where
         _      -> fail "unknown entity type"
 
 data Entity = Entity { entityType :: EntityType
-                     , entityId   :: ItemId
+                     , entityId   :: WikiDataId
                      , entityLabels :: [(Lang, T.Text)]
                      , entitySiteLinks :: [(SiteId, PageName)]
                      }
@@ -61,7 +42,7 @@ instance CBOR.Serialise Entity
 instance FromJSON Entity where
     parseJSON = withObject "entity" $ \o ->
         Entity <$> o .: "type"
-               <*> o .: "id"
+               <*> (o .: "id")
                <*> (o .: "labels" >>= withObject "labels" parseLabels)
                <*> (o .: "sitelinks" >>= withObject "site links" parseSitelinks)
       where
@@ -75,11 +56,11 @@ instance FromJSON Entity where
               (,) <$> o .: "site"
                   <*> o .: "title"
 
-buildIndex :: BSL.ByteString -> HM.HashMap ItemId (HM.HashMap SiteId PageName)
+buildIndex :: BSL.ByteString -> HM.HashMap WikiDataId (HM.HashMap SiteId PageName)
 buildIndex =
     foldMap f . JS.parseLazyByteString (JS.arrayOf (JS.value @Entity))
   where
-    f :: Entity -> HM.HashMap ItemId (HM.HashMap SiteId PageName)
+    f :: Entity -> HM.HashMap WikiDataId (HM.HashMap SiteId PageName)
     f e
       | null (entitySiteLinks e) = mempty
       | otherwise                = HM.singleton (entityId e) (HM.fromList $ entitySiteLinks e)

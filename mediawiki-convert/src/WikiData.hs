@@ -2,36 +2,33 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeApplications #-}
 
 module WikiData where
 
-import CAR.Types (PageName, SiteId(..))
+import CAR.Types (PageName, SiteId(..), WikiDataId)
 import GHC.Generics
 import Data.Aeson
+    ( (.:), withObject, withText, FromJSON(parseJSON), FromJSONKey )
 import Data.Hashable
 import qualified Data.HashMap.Strict as HM
+import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text as T
 import qualified Data.Text.Read as TR
 import qualified Codec.Serialise as CBOR
+import Text.Read (Read(readPrec))
+import Text.ParserCombinators.ReadPrec (get)
+import qualified Data.JsonStream.Parser as JS
+import CAR.Types (PageName(..), SiteId(..), WikiDataId)
 
-type LangIndex = HM.HashMap ItemId (HM.HashMap SiteId PageName)
+
+type WikiDataQidIndex = HM.HashMap PageName WikiDataId
+
+type WikiDataCrossSiteIndex = HM.HashMap WikiDataId (HM.HashMap SiteId PageName)
 
 newtype Lang = Lang T.Text
              deriving (Show, Eq, Ord, Hashable, FromJSON, FromJSONKey, CBOR.Serialise)
 
-newtype ItemId = ItemId Int
-                 deriving (Show, Eq, Ord, Hashable, CBOR.Serialise)
-
-instance FromJSON ItemId where
-    parseJSON = withText "item id" $ maybe (fail "invalid item id") pure . readItemId
-
-readItemId :: T.Text -> Maybe ItemId
-readItemId s
-  | Just rest <- T.stripPrefix "Q" $ T.strip s
-  , Right (n, _) <- TR.decimal rest
-  = Just $ ItemId n
-  | otherwise
-  = Nothing
 
 data EntityType = Item
                 deriving (Show, Generic)
@@ -44,7 +41,7 @@ instance FromJSON EntityType where
 
 -- | A projection of the wikidata entity representation.
 data Entity = Entity { entityType :: EntityType
-                     , entityId   :: ItemId
+                     , entityId   :: WikiDataId
                      , entityLabels :: [(Lang, T.Text)]
                      , entitySiteLinks :: [(SiteId, PageName)]
                      }
@@ -69,8 +66,10 @@ instance FromJSON Entity where
                   <*> o .: "title"
 
 
-createLookup :: LangIndex -> SiteId -> SiteId -> HM.HashMap PageName PageName
-createLookup index fromLang toLang =
+
+
+createCrossSiteLookup :: WikiDataCrossSiteIndex -> SiteId -> SiteId -> HM.HashMap PageName PageName
+createCrossSiteLookup index fromLang toLang =
     HM.fromList
     [ (fromPage, toPage )
     | entries <- HM.elems index
@@ -79,6 +78,33 @@ createLookup index fromLang toLang =
     ]
 
 
-loadLangIndex :: FilePath -> IO LangIndex
-loadLangIndex =
+
+loadWikiDataCrossSiteIndex :: FilePath -> IO WikiDataCrossSiteIndex
+loadWikiDataCrossSiteIndex =
     CBOR.readFileDeserialise
+
+
+
+--- WikiData QID
+
+
+
+openWikiDataFile :: FilePath -> IO BSL.ByteString
+openWikiDataFile file = 
+    BSL.readFile file
+
+decodeWikiDataDump :: BSL.ByteString -> [Entity] 
+decodeWikiDataDump =  
+  JS.parseLazyByteString (JS.arrayOf (JS.value @Entity))
+
+buildWikiDataQidIndex :: SiteId -> BSL.ByteString -> WikiDataQidIndex
+buildWikiDataQidIndex siteId =
+    foldMap f . decodeWikiDataDump
+  where
+    f :: Entity -> HM.HashMap PageName WikiDataId
+    f e
+      | null (entitySiteLinks e) = mempty
+      | otherwise                = HM.fromList $ [ (p, entityId e)  
+                                                 | (s,p) <-  entitySiteLinks e
+                                                 , s == siteId
+                                                 ]  

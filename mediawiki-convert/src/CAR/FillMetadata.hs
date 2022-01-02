@@ -23,6 +23,9 @@ import CAR.Types
 import CAR.Utils.Redirects
 
 import Debug.Trace
+import GHC.Exts (build)
+import WikiData (loadWikiDataCrossSiteIndex, WikiDataQidIndex, openWikiDataFile, buildWikiDataQidIndex)
+
 
 -- action for resolving redirects for all pages in inputPath
 stageResolveRedirect :: FilePath -> IO (Provenance, [Page])
@@ -58,6 +61,9 @@ stageResolveCategoryTags inputPath = do
     let pages' = map (fillCategoryMetadata acc) pages
     return (prov, pages')
 
+
+
+--------------------
 
 fixLinks :: (PageId -> (PageId, Maybe T.Text)) -> (PageId -> Maybe PageName) -> Page -> Page
 fixLinks redirectResolver pageNameResolver page =
@@ -234,3 +240,28 @@ fillCategoryMetadata acc page =
          }
   where
     things = fromMaybe mempty $ HM.lookup (pageId page) acc
+
+
+--- WikiData QID handling
+
+loadWikiDataQid :: SiteId -> FilePath -> IO WikiDataQidIndex
+loadWikiDataQid siteId wikiDataDumpFile =
+  buildWikiDataQidIndex siteId <$> openWikiDataFile wikiDataDumpFile
+
+
+-- action for populating WikiData QIDs
+stageResolveWikiDataQIDs :: FilePath -> SiteId -> FilePath -> IO (Provenance, [Page])
+stageResolveWikiDataQIDs wikiDataFile siteId inputPath = do
+    qidLookup <- loadWikiDataQid siteId wikiDataFile
+    (prov, pages) <- readPagesFileWithProvenance inputPath
+    let pages' = map (fillWikiDataId qidLookup) pages
+    return (prov, pages')
+
+
+
+fillWikiDataId :: HM.HashMap PageName WikiDataId -> Page -> Page
+fillWikiDataId wikiDataMap page
+  | Just wikiDataId <- HM.lookup (pageName page) wikiDataMap
+  = page { pageMetadata = setMetadata _WikiDataQID wikiDataId (pageMetadata page)
+         }
+  | otherwise = page

@@ -111,7 +111,7 @@ main = do
                            Nothing -> return $ id
                            Just (siteWikiIndex, fromSite, toSite)  -> do
                                siteIndex <- CBOR.readFileDeserialise siteWikiIndex
-                               let siteLookup = createLookup siteIndex fromSite toSite
+                               let siteLookup = createCrossSiteLookup siteIndex fromSite toSite
                                let pageNameTranslate :: PageName -> PageName
                                    pageNameTranslate =
                                        \fromPageName -> case HM.lookup fromPageName siteLookup of

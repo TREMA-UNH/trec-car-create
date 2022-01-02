@@ -18,7 +18,7 @@ Install nix (not nixOS!) from <https://nixos.org/download.html>
 
 ### With Nix
 
-To build, type `nix build -A binaries -o car-bin` 
+To build, type `nix-build -A binaries -o car-bin` 
 
 Or alternatively: for parallel builds on `$n` cores add `--max-jobs $n ` to the command line
 

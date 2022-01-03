@@ -20,7 +20,7 @@ import Text.Read (Read(readPrec))
 import Text.ParserCombinators.ReadPrec (get)
 import qualified Data.JsonStream.Parser as JS
 import CAR.Types (PageName(..), SiteId(..), WikiDataId)
-
+import SimplIR.DataSource.Compression (readCompressedFile)
 
 type WikiDataQidIndex = HM.HashMap PageName WikiDataId
 
@@ -90,8 +90,7 @@ loadWikiDataCrossSiteIndex =
 
 
 openWikiDataFile :: FilePath -> IO BSL.ByteString
-openWikiDataFile file = 
-    BSL.readFile file
+openWikiDataFile = readCompressedFile
 
 decodeWikiDataDump :: BSL.ByteString -> [Entity] 
 decodeWikiDataDump =  

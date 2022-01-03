@@ -62,6 +62,7 @@ library
                        regex-compat,
                        simplir,
                        simplir-io,
+                       simplir-data-source,
                        simplir-stop-words,
                        optparse-applicative,
                        trec-car-types

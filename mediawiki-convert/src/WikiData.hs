@@ -31,7 +31,7 @@ import SimplIR.DataSource.Compression.Lazy (decompress)
 
 type WikiDataQidIndex = HM.HashMap PageName WikiDataId
 
-type WikiDataCrossSiteIndex = HM.HashMap WikiDataId (HM.HashMap SiteId PageName)
+type WikiDataCrossSiteIndex = [(WikiDataId, HM.HashMap SiteId PageName)]
 
 newtype Lang = Lang T.Text
              deriving (Show, Eq, Ord, Hashable, FromJSON, FromJSONKey, CBOR.Serialise)
@@ -46,15 +46,15 @@ instance FromJSON WikiDataItem where
           "item" -> do
             entity <- Entity
                 <$> o .: "id"
-                <*> (o .: "labels" >>= withObject "labels" parseLabels)
+              --  <*> (o .: "labels" >>= withObject "labels" parseLabels)
                 <*> (o .: "sitelinks" >>= withObject "site links" parseSitelinks)
             return $ EntityItem entity
           _ -> fail $ "unknown wikidata item type: " ++ show ty
       where
-        parseLabels = mapM parseLabel . HM.elems
-        parseLabel = withObject "label" $ \o ->
-              (,) <$> o .: "language"
-                  <*> o .: "value"
+        -- parseLabels = mapM parseLabel . HM.elems
+        -- parseLabel = withObject "label" $ \o ->
+        --       (,) <$> o .: "language"
+        --           <*> o .: "value"
 
         parseSitelinks = mapM parseSitelink . HM.elems
         parseSitelink = withObject "site link" $ \o ->
@@ -63,7 +63,7 @@ instance FromJSON WikiDataItem where
 
 -- | A projection of the wikidata entity representation.
 data Entity = Entity { entityId        :: !WikiDataId
-                     , entityLabels    :: [(Lang, T.Text)]
+                   --  , entityLabels    :: [(Lang, T.Text)]
                      , entitySiteLinks :: [(SiteId, PageName)]
                      }
             deriving (Show, Generic)
@@ -74,9 +74,9 @@ createCrossSiteLookup :: WikiDataCrossSiteIndex -> SiteId -> SiteId -> HM.HashMa
 createCrossSiteLookup index fromLang toLang =
     HM.fromList
     [ (fromPage, toPage )
-    | entries <- HM.elems index
-    , Just fromPage <- pure $ fromLang `HM.lookup` entries
-    , Just toPage <- pure $ toLang `HM.lookup` entries
+    | (qid, siteMap) <- index
+    , Just fromPage <- pure $ fromLang `HM.lookup` siteMap
+    , Just toPage <- pure $ toLang `HM.lookup` siteMap
     ]
 
 loadWikiDataCrossSiteIndex :: FilePath -> IO WikiDataCrossSiteIndex

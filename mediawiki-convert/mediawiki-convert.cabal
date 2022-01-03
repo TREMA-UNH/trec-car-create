@@ -68,6 +68,7 @@ library
                        simplir-io,
                        simplir-data-source,
                        simplir-stop-words,
+                       simplir-pipes-utils,
                        optparse-applicative,
                        trec-car-types
 

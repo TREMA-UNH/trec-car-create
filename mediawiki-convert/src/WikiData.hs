@@ -30,6 +30,7 @@ import Text.ParserCombinators.ReadPrec (get)
 import qualified Data.JsonStream.Parser as JS
 import CAR.Types (PageName(..), SiteId(..), WikiDataId)
 import SimplIR.DataSource.Compression (decompressed)
+import SimplIR.Pipes.Progress
 
 type WikiDataQidIndex = HM.HashMap PageName WikiDataId
 
@@ -99,7 +100,7 @@ loadWikiDataCrossSiteIndex =
 parseWikiDataDump :: (Pipes.Safe.MonadSafe m, MonadFail m)
                   => Handle -> Producer Entity m ()
 parseWikiDataDump hdl = do
-    leftovers <- parseJsonP parser $ decompressed $ P.BS.fromHandle hdl
+    leftovers <- parseJsonP parser $ withFileProgress hdl decompressed
     have_leftovers <- P.lift $ P.BS.null leftovers
     when have_leftovers $ fail "parseWikiDataDump: found leftovers"
   where parser = JS.arrayOf (JS.value @Entity)

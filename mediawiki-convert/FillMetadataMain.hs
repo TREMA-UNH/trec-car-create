@@ -45,7 +45,7 @@ opts = do
     wikiDataQids :: Parser Stage
     wikiDataQids =
       flag' StageWikiDataQids (short 'q' <> long "qid" <> help "Load WikiData QIDs into meta data")
-        <*> option str (long "wikidata" <> metavar "WIKIDATAFILE" <> help "Matching WikiData dump file")  
+        <*> option str (long "wikidata" <> metavar "CROSSSITE.CBOR-FILE" <> help "Matching WikiData dump file")  
         <*> option str (long "siteId" <> metavar "SITE" <> help "Site id of the dump, e.g. 'enwiki' for English Wikipedia")
 
 

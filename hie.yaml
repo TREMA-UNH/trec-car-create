@@ -81,9 +81,6 @@ cradle:
     - path: "multilang-car/.//LangExtract.hs"
       component: "multilang-car:exe:multilang-car"
 
-    - path: "multilang-car/.//LangIndex.hs"
-      component: "multilang-car:exe:multilang-car-index"
-
     - path: "trec-car-tools-haskell/simplir/graph-algorithms/src"
       component: "lib:graph-algorithms"
 

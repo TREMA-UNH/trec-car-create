@@ -112,11 +112,21 @@ chunksOf n xs =
     let (hd, tl) = splitAt n xs
     in hd : chunksOf n tl
 
-buildWikiDataQidIndex
+
+buildWikiDataQidIndex :: SiteId -> BSL.ByteString -> WikiDataQidIndex
+buildWikiDataQidIndex siteId bs =
+  let crossSiteData :: [(WikiDataId, HM.HashMap SiteId PageName)] = CBOR.deserialise bs
+  in HM.fromList 
+     $ [ (pagename, qid) 
+       | (qid, sitemap) <- crossSiteData 
+       , Just pagename <- pure $ siteId `HM.lookup` sitemap
+       ]
+
+buildWikiDataQidIndex''
     :: SiteId
     -> BSL.ByteString
     -> WikiDataQidIndex
-buildWikiDataQidIndex siteId bs =
+buildWikiDataQidIndex'' siteId bs =
     HM.unions
     $ withStrategy strat
     $ map (buildWikiDataQidIndex' siteId)

@@ -49,6 +49,7 @@ library
                        trifecta >= 1.5,
                        log-domain,
                        foldl,
+                       parallel,
                        pipes,
                        pipes-safe,
                        pipes-bytestring,
@@ -162,7 +163,7 @@ executable trec-car-detect-duplicate-paragraphs
 
 executable trec-car-fill-metadata
   main-is:             FillMetadataMain.hs
-  ghc-options:         -Wall -threaded -rtsopts
+  ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
                        trec-car-tools,
                        optparse-applicative,

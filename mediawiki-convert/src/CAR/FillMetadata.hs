@@ -13,12 +13,12 @@ import Data.Semigroup hiding (option)
 import Data.Foldable (foldl', length)
 import Data.Maybe
 import qualified Data.Text as T
+import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString.Lazy.Progress as BSLP
 import qualified Data.Vector as V
 import Data.Coerce
 import Data.Vector.Algorithms.Intro
 import Data.Ord
-import Pipes.Safe
-import System.IO
 
 import CAR.Utils
 import CAR.Types
@@ -247,9 +247,9 @@ fillCategoryMetadata acc page =
 --- WikiData QID handling
 
 loadWikiDataQid :: SiteId -> FilePath -> IO WikiDataQidIndex
-loadWikiDataQid siteId wikiDataDumpFile =
-    withFile wikiDataDumpFile ReadMode $ \hdl -> runSafeT $
-        buildWikiDataQidIndex siteId $ parseWikiDataDump hdl
+loadWikiDataQid siteId wikiDataDumpFile = do
+    bs <- BSLP.readFile wikiDataDumpFile
+    return $ buildWikiDataQidIndex siteId bs
 
 
 -- action for populating WikiData QIDs

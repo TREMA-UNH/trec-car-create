@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE DeriveGeneric #-}
@@ -6,21 +8,17 @@
 
 module WikiData where
 
+import Control.Applicative
 import GHC.Generics
+import Data.Maybe (isNothing)
+import qualified Data.Aeson as Aeson
 import Data.Aeson
     ( (.:), withObject, withText, FromJSON(parseJSON), FromJSONKey )
 import Data.Hashable
 import Control.Monad
 import qualified Data.HashMap.Strict as HM
-import qualified Data.ByteString.Lazy as BSL
-
-import           Pipes (Producer)
-import qualified Pipes as P
-import qualified Pipes.Safe
-import qualified Pipes.Prelude as P.P
-import qualified Pipes.ByteString as P.BS
-import           System.IO
-import           StreamJSON
+import qualified Data.ByteString.Lazy.Char8 as BSL
+import Control.Parallel.Strategies
 
 import qualified Data.Text as T
 import qualified Data.Text.Read as TR
@@ -29,8 +27,7 @@ import Text.Read (Read(readPrec))
 import Text.ParserCombinators.ReadPrec (get)
 import qualified Data.JsonStream.Parser as JS
 import CAR.Types (PageName(..), SiteId(..), WikiDataId)
-import SimplIR.DataSource.Compression (decompressed)
-import SimplIR.Pipes.Progress
+import SimplIR.DataSource.Compression.Lazy (decompress)
 
 type WikiDataQidIndex = HM.HashMap PageName WikiDataId
 
@@ -39,31 +36,20 @@ type WikiDataCrossSiteIndex = HM.HashMap WikiDataId (HM.HashMap SiteId PageName)
 newtype Lang = Lang T.Text
              deriving (Show, Eq, Ord, Hashable, FromJSON, FromJSONKey, CBOR.Serialise)
 
+data WikiDataItem = EntityItem Entity | PropertyItem
 
-data EntityType = Item
-                deriving (Show, Generic)
-instance CBOR.Serialise EntityType
-instance FromJSON EntityType where
-    parseJSON = withText "entity type" $ \s ->
-      case s of
-        "item" -> return Item
-        _      -> fail "unknown entity type"
-
--- | A projection of the wikidata entity representation.
-data Entity = Entity { entityType :: EntityType
-                     , entityId   :: WikiDataId
-                     , entityLabels :: [(Lang, T.Text)]
-                     , entitySiteLinks :: [(SiteId, PageName)]
-                     }
-            deriving (Show, Generic)
-instance CBOR.Serialise Entity
-
-instance FromJSON Entity where
-    parseJSON = withObject "entity" $ \o ->
-        Entity <$> o .: "type"
-               <*> o .: "id"
-               <*> (o .: "labels" >>= withObject "labels" parseLabels)
-               <*> (o .: "sitelinks" >>= withObject "site links" parseSitelinks)
+instance FromJSON WikiDataItem where
+    parseJSON = withObject "wikidata item" $ \o -> do
+        ty <- o .: "type"
+        case ty :: T.Text of
+          "property" -> return PropertyItem
+          "item" -> do
+            entity <- Entity
+                <$> o .: "id"
+                <*> (o .: "labels" >>= withObject "labels" parseLabels)
+                <*> (o .: "sitelinks" >>= withObject "site links" parseSitelinks)
+            return $ EntityItem entity
+          _ -> fail $ "unknown wikidata item type: " ++ show ty
       where
         parseLabels = mapM parseLabel . HM.elems
         parseLabel = withObject "label" $ \o ->
@@ -75,8 +61,14 @@ instance FromJSON Entity where
               (,) <$> o .: "site"
                   <*> o .: "title"
 
+-- | A projection of the wikidata entity representation.
+data Entity = Entity { entityId        :: !WikiDataId
+                     , entityLabels    :: [(Lang, T.Text)]
+                     , entitySiteLinks :: [(SiteId, PageName)]
+                     }
+            deriving (Show, Generic)
 
-
+instance CBOR.Serialise Entity
 
 createCrossSiteLookup :: WikiDataCrossSiteIndex -> SiteId -> SiteId -> HM.HashMap PageName PageName
 createCrossSiteLookup index fromLang toLang =
@@ -87,37 +79,62 @@ createCrossSiteLookup index fromLang toLang =
     , Just toPage <- pure $ toLang `HM.lookup` entries
     ]
 
-
-
 loadWikiDataCrossSiteIndex :: FilePath -> IO WikiDataCrossSiteIndex
 loadWikiDataCrossSiteIndex =
     CBOR.readFileDeserialise
 
-
-
 --- WikiData QID
 
-parseWikiDataDump :: (Pipes.Safe.MonadSafe m, MonadFail m)
-                  => Handle -> Producer Entity m ()
-parseWikiDataDump hdl = do
-    leftovers <- parseJsonP parser $ withFileProgress hdl decompressed
-    have_leftovers <- P.lift $ P.BS.null leftovers
-    when have_leftovers $ fail "parseWikiDataDump: found leftovers"
-  where parser = JS.arrayOf (JS.value @Entity)
+parseJSONLinesArray :: forall a. FromJSON a => BSL.ByteString -> [a]
+parseJSONLinesArray bsl
+  | start /= "[" = error "parseWikiDataDump"
+  | otherwise =
+      zipWith parseOne [1..] $ takeWhile (isNothing . BSL.stripPrefix "]") lines
+  where
+    start:lines = BSL.split '\n' $ decompress bsl
+
+    parseOne :: Int -> BSL.ByteString -> a
+    parseOne lineNo l = 
+        case parseOne' l of
+          Left err -> error $ "parseJSONLinesArray: parse error on line " ++ show lineNo ++ ":\n" ++ err
+          Right x -> x
+
+    parseOne' :: BSL.ByteString -> Either String a
+    parseOne' l = do
+        l <- pure $ maybe l id $ "," `BSL.stripSuffix` l
+        Aeson.eitherDecode l
+
+parseWikiDataDump :: BSL.ByteString -> [WikiDataItem]
+parseWikiDataDump = parseJSONLinesArray
+
+chunksOf n [] = []
+chunksOf n xs =
+    let (hd, tl) = splitAt n xs
+    in hd : chunksOf n tl
 
 buildWikiDataQidIndex
-    :: (MonadFail m)
-    => SiteId
-    -> Producer Entity m ()
-    -> m WikiDataQidIndex
-buildWikiDataQidIndex siteId prod =
-    fmap fst $ P.P.fold' (<>) mempty id $
-        prod P.>-> P.P.map f
+    :: SiteId
+    -> BSL.ByteString
+    -> WikiDataQidIndex
+buildWikiDataQidIndex siteId bs =
+    HM.unions
+    $ withStrategy strat
+    $ map (buildWikiDataQidIndex' siteId)
+    $ chunksOf 16 (parseWikiDataDump bs)
   where
-    f :: Entity -> HM.HashMap PageName WikiDataId
-    f e
-      | null (entitySiteLinks e) = mempty
-      | otherwise                = HM.fromList $ [ (p, entityId e)  
-                                                 | (s,p) <-  entitySiteLinks e
-                                                 , s == siteId
-                                                 ]  
+    strat = parBuffer 256 rseq
+
+buildWikiDataQidIndex'
+    :: SiteId
+    -> [WikiDataItem]
+    -> WikiDataQidIndex
+buildWikiDataQidIndex' siteId entities =
+    HM.fromList $ foldMap f entities
+  where
+    f :: WikiDataItem -> [(PageName,WikiDataId)]
+    f item = do
+        EntityItem e <- pure item
+        guard $ not $ null (entitySiteLinks e)
+        (s, p) <- entitySiteLinks e
+        guard $ s == siteId
+        return (p, entityId e)

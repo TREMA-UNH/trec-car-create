@@ -10,13 +10,15 @@ import qualified Control.Foldl as Foldl
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import Data.Semigroup hiding (option)
-import Data.Foldable (foldl')
+import Data.Foldable (foldl', length)
 import Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import Data.Coerce
 import Data.Vector.Algorithms.Intro
 import Data.Ord
+import Pipes.Safe
+import System.IO
 
 import CAR.Utils
 import CAR.Types
@@ -24,7 +26,7 @@ import CAR.Utils.Redirects
 
 import Debug.Trace
 import GHC.Exts (build)
-import WikiData (loadWikiDataCrossSiteIndex, WikiDataQidIndex, openWikiDataFile, buildWikiDataQidIndex)
+import WikiData (loadWikiDataCrossSiteIndex, WikiDataQidIndex, parseWikiDataDump, buildWikiDataQidIndex)
 
 
 -- action for resolving redirects for all pages in inputPath
@@ -246,7 +248,8 @@ fillCategoryMetadata acc page =
 
 loadWikiDataQid :: SiteId -> FilePath -> IO WikiDataQidIndex
 loadWikiDataQid siteId wikiDataDumpFile =
-  buildWikiDataQidIndex siteId <$> openWikiDataFile wikiDataDumpFile
+    withFile wikiDataDumpFile ReadMode $ \hdl -> runSafeT $
+        buildWikiDataQidIndex siteId $ parseWikiDataDump hdl
 
 
 -- action for populating WikiData QIDs

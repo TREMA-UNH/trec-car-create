@@ -5,7 +5,7 @@ import qualified Data.ByteString as BS
 import           Pipes
 import           Pipes.Internal as P
 import qualified Pipes.Safe
-import           Pipes.Safe (MonadSafe)
+import           Pipes.Safe (MonadSafe, SafeT)
 import           Pipes.Safe.Prelude (withFile)
 
 parseJsonP
@@ -22,4 +22,7 @@ parseJsonP parser = go (JS.runParser parser)
       go (JS.ParseNeedData k)   (P.M k')          = lift k' >>= go (JS.ParseNeedData k)
       go (JS.ParseNeedData k)   (P.Pure ())       = fail "parsePipesBS: end of stream"
       go (JS.ParseNeedData k)   (P.Request _ _)   = fail "parsePipesBS: impossible"
-
+{-# SPECIALISE parseJsonP
+    :: JS.Parser a
+    -> Producer BS.ByteString (SafeT IO) ()
+    -> Producer a (SafeT IO) (Producer BS.ByteString (SafeT IO) ()) #-}

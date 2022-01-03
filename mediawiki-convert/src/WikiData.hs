@@ -103,7 +103,6 @@ parseWikiDataDump hdl = do
     have_leftovers <- P.lift $ P.BS.null leftovers
     when have_leftovers $ fail "parseWikiDataDump: found leftovers"
   where parser = JS.arrayOf (JS.value @Entity)
-{-# SPECIALISE parseWikiDataDump :: Handle -> Producer Entity (Pipes.Safe.SafeT IO) () #-}
 
 buildWikiDataQidIndex
     :: (MonadFail m)

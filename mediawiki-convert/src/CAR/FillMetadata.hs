@@ -27,6 +27,7 @@ import CAR.Utils.Redirects
 import Debug.Trace
 import GHC.Exts (build)
 import WikiData (loadWikiDataCrossSiteIndex, WikiDataQidIndex, buildWikiDataQidIndex)
+import CAR.Types (Page(Page))
 
 
 -- action for resolving redirects for all pages in inputPath
@@ -258,9 +259,13 @@ stageResolveWikiDataQIDs :: FilePath -> SiteId -> FilePath -> IO (Provenance, [P
 stageResolveWikiDataQIDs wikiDataFile siteId inputPath = do
     qidLookup <- loadWikiDataQid siteId wikiDataFile
     (prov, pages) <- readPagesFileWithProvenance inputPath
-    let pages' = map (fillWikiDataId qidLookup) pages
+    let pages' = map (fillSiteId siteId . fillWikiDataId qidLookup) pages
     return (prov, pages')
 
+fillSiteId :: SiteId -> Page -> Page
+fillSiteId siteId page =
+    page { pageMetadata = setMetadata _WikiSiteId siteId (pageMetadata page)
+        }
 
 
 fillWikiDataId :: HM.HashMap PageName WikiDataId -> Page -> Page

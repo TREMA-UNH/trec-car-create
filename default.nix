@@ -27,7 +27,6 @@ let
         filter-duplicates    = self.callCabal2nix "filter-duplicates" (localDir ./filter-duplicates) {};
         assessment-eval      = self.callCabal2nix "assessment-eval" (localDir ./assessment-eval) {};
         graph-algorithms     = self.callCabal2nix "graph-algorithms" (localDir ./trec-car-tools-haskell/simplir/graph-algorithms) {};
-        multilang-car        = self.callCabal2nix "multilang-car" (localDir ./multilang-car) {};
         tqa-import           = self.callCabal2nix "tqa-import" (localDir ./tqa-import) {};
         miso-types           = self.callCabal2nix "miso-types" (localDir ./miso-types) {};
 

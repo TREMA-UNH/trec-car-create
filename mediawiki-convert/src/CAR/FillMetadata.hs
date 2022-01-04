@@ -26,7 +26,7 @@ import CAR.Utils.Redirects
 
 import Debug.Trace
 import GHC.Exts (build)
-import WikiData (loadWikiDataCrossSiteIndex, WikiDataQidIndex, parseWikiDataDump, buildWikiDataQidIndex)
+import WikiData (loadWikiDataCrossSiteIndex, WikiDataQidIndex, buildWikiDataQidIndex)
 
 
 -- action for resolving redirects for all pages in inputPath
@@ -246,10 +246,11 @@ fillCategoryMetadata acc page =
 
 --- WikiData QID handling
 
+-- | Produce WikiDataQidIndex from a WikiData CrossSite (CBOR) file. 
+--   Create the CrossSite file from a Wikidata JSON dump with `WikiDataCrossSite.hs`
 loadWikiDataQid :: SiteId -> FilePath -> IO WikiDataQidIndex
-loadWikiDataQid siteId wikiDataDumpFile = do
-    bs <- BSLP.readFile wikiDataDumpFile
-    return $ buildWikiDataQidIndex siteId bs
+loadWikiDataQid siteId wikiDataCrossSiteFile = do
+    buildWikiDataQidIndex siteId <$> loadWikiDataCrossSiteIndex wikiDataCrossSiteFile
 
 
 -- action for populating WikiData QIDs

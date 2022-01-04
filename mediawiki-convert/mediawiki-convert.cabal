@@ -278,6 +278,25 @@ executable trec-car-split-paragraphs
                        mediawiki-convert
   default-language:    Haskell2010
 
+executable trec-car-cross-site
+  main-is:             WikiDataCrossSite.hs
+  other-extensions:    OverloadedStrings, GeneralizedNewtypeDeriving, TypeApplications, DeriveGeneric
+  build-depends:       base,
+                       aeson >=1.1 && <1.5,
+                       hashable >=1.2 && <1.4,
+                       bytestring >=0.10 && <0.11,
+                       unordered-containers >=0.2 && <0.3,
+                       text >=1.2 && <1.3,
+                       serialise >=0.2 && <0.3,
+                       parallel >=3.2 && <3.3,
+                       json-stream >=0.4 && <0.5,
+                       simplir-data-source,
+                       trec-car-types,
+                       trec-car-tools,
+                       mediawiki-convert
+  default-language:    Haskell2010
+  ghc-options:         -threaded
+
 
 test-suite tests
   main-is:             Test.hs

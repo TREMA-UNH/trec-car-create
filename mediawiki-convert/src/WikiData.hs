@@ -70,6 +70,8 @@ data Entity = Entity { entityId        :: !WikiDataId
 
 instance CBOR.Serialise Entity
 
+
+-- | converting page names from one SiteId to another (e.g. Italian to Japanese)
 createCrossSiteLookup :: WikiDataCrossSiteIndex -> SiteId -> SiteId -> HM.HashMap PageName PageName
 createCrossSiteLookup index fromLang toLang =
     HM.fromList
@@ -85,66 +87,12 @@ loadWikiDataCrossSiteIndex =
 
 --- WikiData QID
 
-parseJSONLinesArray :: forall a. FromJSON a => BSL.ByteString -> [a]
-parseJSONLinesArray bsl
-  | start /= "[" = error "parseWikiDataDump"
-  | otherwise =
-      zipWith parseOne [1..] $ takeWhile (isNothing . BSL.stripPrefix "]") lines
-  where
-    start:lines = BSL.split '\n' $ decompress bsl
-
-    parseOne :: Int -> BSL.ByteString -> a
-    parseOne lineNo l = 
-        case parseOne' l of
-          Left err -> error $ "parseJSONLinesArray: parse error on line " ++ show lineNo ++ ":\n" ++ err
-          Right x -> x
-
-    parseOne' :: BSL.ByteString -> Either String a
-    parseOne' l = do
-        l <- pure $ maybe l id $ "," `BSL.stripSuffix` l
-        Aeson.eitherDecode l
-
-parseWikiDataDump :: BSL.ByteString -> [WikiDataItem]
-parseWikiDataDump = parseJSONLinesArray
-
-chunksOf n [] = []
-chunksOf n xs =
-    let (hd, tl) = splitAt n xs
-    in hd : chunksOf n tl
-
-
-buildWikiDataQidIndex :: SiteId -> BSL.ByteString -> WikiDataQidIndex
-buildWikiDataQidIndex siteId bs =
-  let crossSiteData :: [(WikiDataId, HM.HashMap SiteId PageName)] = CBOR.deserialise bs
-  in HM.fromList 
+-- | Build WikiData QID index based on a cross-site CBOR. 
+--   The cross-site CBOR can be built with `WikiDataCrossSite.hs`, expected to load CBOR as lazy ByteString.
+buildWikiDataQidIndex :: SiteId -> WikiDataCrossSiteIndex -> WikiDataQidIndex
+buildWikiDataQidIndex siteId crossSiteIndex =
+  HM.fromList 
      $ [ (pagename, qid) 
-       | (qid, sitemap) <- crossSiteData 
+       | (qid, sitemap) <- crossSiteIndex
        , Just pagename <- pure $ siteId `HM.lookup` sitemap
        ]
-
-buildWikiDataQidIndex''
-    :: SiteId
-    -> BSL.ByteString
-    -> WikiDataQidIndex
-buildWikiDataQidIndex'' siteId bs =
-    HM.unions
-    $ withStrategy strat
-    $ map (buildWikiDataQidIndex' siteId)
-    $ chunksOf 16 (parseWikiDataDump bs)
-  where
-    strat = parBuffer 256 rseq
-
-buildWikiDataQidIndex'
-    :: SiteId
-    -> [WikiDataItem]
-    -> WikiDataQidIndex
-buildWikiDataQidIndex' siteId entities =
-    HM.fromList $ foldMap f entities
-  where
-    f :: WikiDataItem -> [(PageName,WikiDataId)]
-    f item = do
-        EntityItem e <- pure item
-        guard $ not $ null (entitySiteLinks e)
-        (s, p) <- entitySiteLinks e
-        guard $ s == siteId
-        return (p, entityId e)

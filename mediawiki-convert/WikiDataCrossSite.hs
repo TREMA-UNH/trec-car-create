@@ -14,6 +14,7 @@ import Data.Maybe (mapMaybe, isNothing)
 import Options.Applicative
 
 import SimplIR.DataSource.Compression.Lazy
+import Data.ByteString.Lazy.Progress as PBSL
 import CAR.ToolVersion
 import CAR.Types.AST ( PageName(..), SiteId(..), WikiDataId )
 import WikiData
@@ -97,7 +98,7 @@ main :: IO ()
 main = do
     Opts{..} <- execParser' 1 (helper <*> opts ) $ progDescDoc (Just "Convert WikiData JSON dump to cross-site.cbor ")
 
-    BSL.readFile wikiDataJSONFile 
+    PBSL.readFile wikiDataJSONFile 
       >>= pure . decompress
       >>= pure . buildWikiDataCrossSiteIndex 
       >>= BSL.writeFile crossSiteFile . CBOR.serialise

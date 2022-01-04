@@ -290,6 +290,7 @@ executable trec-car-cross-site
                        serialise >=0.2 && <0.3,
                        parallel >=3.2 && <3.3,
                        json-stream >=0.4 && <0.5,
+                       optparse-applicative,
                        simplir-data-source,
                        trec-car-types,
                        trec-car-tools,

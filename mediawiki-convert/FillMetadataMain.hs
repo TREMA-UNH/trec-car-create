@@ -11,10 +11,9 @@
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE ApplicativeDo #-}
 
-import Data.Semigroup hiding (option)
+
 import Options.Applicative
 
-import Data.Maybe 
 import CAR.Types
 import CAR.ToolVersion
 import CAR.FillMetadata
@@ -24,7 +23,7 @@ import CAR.FillMetadata
 data Stage = StageResolveRedirect
            | StageResolveDisambiguationAndInlinks
            | StageCategoryTags
-           | StageWikiDataQids FilePath SiteId -- wikiDataDumpFile siteId
+           | StageWikiDataQids FilePath SiteId -- wikiDataCrossSiteFile siteId
 
 data Opts = Opts { inputPath :: FilePath
                  , outputPath :: FilePath
@@ -45,7 +44,7 @@ opts = do
     wikiDataQids :: Parser Stage
     wikiDataQids =
       flag' StageWikiDataQids (short 'q' <> long "qid" <> help "Load WikiData QIDs into meta data")
-        <*> option str (long "wikidata" <> metavar "CROSSSITE.CBOR-FILE" <> help "Matching WikiData dump file")  
+        <*> option str (long "wikidata-cross-site" <> metavar "CBOR" <> help "WikiData cross-site file (convert with `trec-car-cross-site`)")
         <*> option str (long "siteId" <> metavar "SITE" <> help "Site id of the dump, e.g. 'enwiki' for English Wikipedia")
 
 

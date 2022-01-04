@@ -2,6 +2,8 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ApplicativeDo #-}
 
 import Control.Parallel.Strategies
 import qualified Data.ByteString.Lazy.Char8 as BSL
@@ -9,8 +11,10 @@ import qualified Data.HashMap.Strict as HM
 import qualified Codec.Serialise as CBOR
 import qualified Data.JsonStream.Parser as JS
 import Data.Maybe (mapMaybe, isNothing)
+import Options.Applicative
 
 import SimplIR.DataSource.Compression.Lazy
+import CAR.ToolVersion
 import CAR.Types.AST ( PageName(..), SiteId(..), WikiDataId )
 import WikiData
     ( Entity(entityId, entitySiteLinks), WikiDataCrossSiteIndex, WikiDataQidIndex, WikiDataItem (EntityItem) )
@@ -79,7 +83,21 @@ buildWikiDataCrossSiteIndex bs =
     strat = parBuffer 256 rseq
 
 
+data Opts = Opts { wikiDataJSONFile :: FilePath
+                 , crossSiteFile :: FilePath
+                 }
+
+opts :: Parser Opts 
+opts = do
+  wikiDataJSONFile <- option str (short 'i' <> long "wiki-data-json" <> metavar "INFILE" <> help "Wikidata ``all'' json dump as available online. Can be uncompressed or compressed with bz2, xz, gz.")
+  crossSiteFile <- option str (short 'o' <> long "cross-site-file-cbor" <> metavar "OUTFILE" <> help "Output file for cross-site index (in CBOR)")
+  return Opts {..}
 
 main :: IO ()
 main = do
-    BSL.getContents >>= pure . buildWikiDataCrossSiteIndex >>= BSL.writeFile "wikidata-cross-site-index.cbor" . CBOR.serialise
+    Opts{..} <- execParser' 1 (helper <*> opts ) $ progDescDoc (Just "Convert WikiData JSON dump to cross-site.cbor ")
+
+    BSL.readFile wikiDataJSONFile 
+      >>= pure . decompress
+      >>= pure . buildWikiDataCrossSiteIndex 
+      >>= BSL.writeFile crossSiteFile . CBOR.serialise

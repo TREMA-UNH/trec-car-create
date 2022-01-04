@@ -16,13 +16,6 @@ extra-source-files:  CHANGELOG.md
 cabal-version:       >=1.10
 
 library
---  reexported-modules:  CAR.Types,
---                       CAR.Types.Provenance,
---                       CAR.Types.AST,
---                       CAR.Types.AST.Pretty,
---                       CAR.Types.CborList,
---                       CAR.Types.Files,
---                       CAR.Types.Orphans
   exposed-modules:     CAR.KnowledgeBase
                        CAR.FillMetadata
                        CAR.FilterPred
@@ -78,7 +71,7 @@ library
 executable trec-car-export
   main-is:             Export.hs
   other-extensions:    DeriveGeneric, TypeApplications, RecordWildCards, ViewPatterns, OverloadedStrings, RankNTypes, ScopedTypeVariables, GADTs, TemplateHaskell, GeneralizedNewtypeDeriving, QuasiQuotes, StandaloneDeriving, BangPatterns
-  ghc-options:         -Wall
+  ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
                        serialise,
                        bytestring >= 0.10,
@@ -93,7 +86,7 @@ executable trec-car-export
 
 executable trec-car-filter
   main-is:             FilterPages.hs
-  ghc-options:         -Wall
+  ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
                        bytestring,
                        unordered-containers,
@@ -111,7 +104,7 @@ executable trec-car-filter
 
 executable trec-car-transform-content
   main-is:             TransformContent.hs
-  ghc-options:         -Wall
+  ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
                        bytestring,
                        unordered-containers,
@@ -128,7 +121,7 @@ executable trec-car-transform-content
 
 executable trec-car-legal-entity-ids
   main-is:             LegalEntityIds.hs
-  ghc-options:         -Wall
+  ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
                        bytestring,
                        unordered-containers,
@@ -146,7 +139,7 @@ executable trec-car-legal-entity-ids
 
 executable trec-car-detect-duplicate-paragraphs
   main-is:             DetectDuplicateParagraphs.hs
-  ghc-options:         -Wall
+  ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
                        bytestring,
                        containers,
@@ -180,7 +173,7 @@ executable trec-car-fill-metadata
 executable trec-car-derive-toplevel
   main-is:             DeriveToplevelQrels.hs
   other-extensions:    DeriveGeneric, TypeApplications, RecordWildCards, ViewPatterns, OverloadedStrings, RankNTypes, ScopedTypeVariables, GADTs, TemplateHaskell, GeneralizedNewtypeDeriving, QuasiQuotes, StandaloneDeriving, BangPatterns
-  ghc-options:         -Wall
+  ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
                        serialise,
                        bytestring >= 0.10,
@@ -197,7 +190,7 @@ executable trec-car-derive-toplevel
 
 executable trec-car-remove-duplicate-pages
   main-is:             RemoveDuplicatePages.hs
-  ghc-options:         -Wall
+  ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
                        bytestring,
                        containers,
@@ -215,7 +208,7 @@ executable trec-car-remove-duplicate-pages
 
 executable trec-car-merge-duplicate-sections
   main-is:             MergeDuplicateSections.hs
-  ghc-options:         -Wall
+  ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
                        bytestring,
                        containers,
@@ -235,7 +228,7 @@ executable trec-car-merge-duplicate-sections
 
 executable trec-car-validate-benchmark
   main-is:             ValidateBenchmark.hs
-  ghc-options:         -Wall
+  ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
                        bytestring,
                        containers,
@@ -251,7 +244,7 @@ executable trec-car-validate-benchmark
 
 executable test-entity-passage-parsing
   main-is:             TestEntityPassageParsing.hs
-  ghc-options:         -Wall
+  ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
                        containers,
                        unordered-containers,
@@ -266,7 +259,7 @@ executable test-entity-passage-parsing
 
 executable trec-car-split-paragraphs
   main-is:             SplitParagraphs.hs
-  ghc-options:         -Wall
+  ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
                        containers,
                        serialise,
@@ -280,6 +273,7 @@ executable trec-car-split-paragraphs
 
 executable trec-car-cross-site
   main-is:             WikiDataCrossSite.hs
+  ghc-options:         -Wall -threaded -rtsopts -eventlog
   other-extensions:    OverloadedStrings, GeneralizedNewtypeDeriving, TypeApplications, DeriveGeneric
   build-depends:       base,
                        aeson >=1.1 && <1.5,
@@ -297,7 +291,6 @@ executable trec-car-cross-site
                        trec-car-tools,
                        mediawiki-convert
   default-language:    Haskell2010
-  ghc-options:         -threaded
 
 
 test-suite tests

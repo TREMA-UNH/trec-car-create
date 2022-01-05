@@ -18,12 +18,17 @@ Install nix (not nixOS!) from <https://nixos.org/download.html>
 
 ### With Nix
 
-To build, type `nix-build -A binaries -o car-bin` 
 
-Or alternatively: for parallel builds on `$n` cores add `--max-jobs $n ` to the command line
+To build using $n cores, type 
+
+```
+nix-env -iA nixpkgs.cachix  // once per session
+cachix use trec-car-tools  // once per session
+nix-build -A binaries -o car-bin --cores $n --max-jobs $n
+```
+
 
 This will produce the directory `./car-bin/bin`  containing all tools needed to create your own trec-car dumps and datasers.
-
 
 
 <!-- 

@@ -22,7 +22,7 @@ library
   build-depends:       base,
                        aeson,
                        text,
-                       bytestring,
+                       bytestring >=0.10 && <0.12,
                        containers,
                        hashable,
                        time,
@@ -46,7 +46,7 @@ library
 executable test-load-pages
   main-is:             TestLoadPage.hs
   build-depends:       base,
-                       bytestring,
+                       bytestring >=0.10 && <0.12,
                        optparse-applicative >= 0.12,
                        aeson,
                        aeson-pretty,

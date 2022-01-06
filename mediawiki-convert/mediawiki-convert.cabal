@@ -31,7 +31,7 @@ library
                        cborg-json,
                        lens,
                        serialise >= 0.1,
-                       bytestring >= 0.10,
+                       bytestring >= 0.10 && < 0.12,
                        json-stream >=0.4 && <0.5,
                        deepseq,
                        filepath >=1.4 && <1.5,
@@ -74,7 +74,7 @@ executable trec-car-export
   ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
                        serialise,
-                       bytestring >= 0.10,
+                       bytestring >=0.10 && <0.12,
                        containers,
                        text,
                        optparse-applicative,
@@ -88,7 +88,7 @@ executable trec-car-filter
   main-is:             FilterPages.hs
   ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
-                       bytestring,
+                       bytestring >=0.10 && <0.12,
                        unordered-containers,
                        trifecta >= 1.5,
                        parsers >= 0.12,
@@ -106,7 +106,7 @@ executable trec-car-transform-content
   main-is:             TransformContent.hs
   ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
-                       bytestring,
+                       bytestring >=0.10 && <0.12,
                        unordered-containers,
                        trifecta >= 1.5,
                        parsers >= 0.12,
@@ -123,7 +123,7 @@ executable trec-car-legal-entity-ids
   main-is:             LegalEntityIds.hs
   ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
-                       bytestring,
+                       bytestring >=0.10 && <0.12,
                        unordered-containers,
                        text,
                        containers,
@@ -141,7 +141,7 @@ executable trec-car-detect-duplicate-paragraphs
   main-is:             DetectDuplicateParagraphs.hs
   ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
-                       bytestring,
+                       bytestring >=0.10 && <0.12,
                        containers,
                        unordered-containers,
                        text,
@@ -176,7 +176,7 @@ executable trec-car-derive-toplevel
   ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
                        serialise,
-                       bytestring >= 0.10,
+                       bytestring >=0.10 && <0.12,
                        containers,
                        text,
                        optparse-applicative,
@@ -192,7 +192,7 @@ executable trec-car-remove-duplicate-pages
   main-is:             RemoveDuplicatePages.hs
   ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
-                       bytestring,
+                       bytestring >=0.10 && <0.12,
                        containers,
                        trifecta >= 1.5,
                        parsers >= 0.12,
@@ -210,7 +210,7 @@ executable trec-car-merge-duplicate-sections
   main-is:             MergeDuplicateSections.hs
   ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
-                       bytestring,
+                       bytestring >=0.10 && <0.12,
                        containers,
                        trifecta >= 1.5,
                        parsers >= 0.12,
@@ -230,7 +230,7 @@ executable trec-car-validate-benchmark
   main-is:             ValidateBenchmark.hs
   ghc-options:         -Wall -threaded -rtsopts -eventlog
   build-depends:       base,
-                       bytestring,
+                       bytestring >=0.10 && <0.12,
                        containers,
                        unordered-containers,
                        text,
@@ -276,9 +276,9 @@ executable trec-car-cross-site
   ghc-options:         -Wall -threaded -rtsopts -eventlog
   other-extensions:    OverloadedStrings, GeneralizedNewtypeDeriving, TypeApplications, DeriveGeneric
   build-depends:       base,
-                       aeson >=1.1 && <1.5,
+                       aeson >=1.1 && <1.6,
                        hashable >=1.2 && <1.4,
-                       bytestring >=0.10 && <0.11,
+                       bytestring >=0.10 && <0.12,
                        unordered-containers >=0.2 && <0.3,
                        text >=1.2 && <1.3,
                        serialise >=0.2 && <0.3,

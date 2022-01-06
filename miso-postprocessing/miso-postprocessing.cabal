@@ -28,7 +28,7 @@ library
 executable merge-assessment-pages
   main-is:             MergeAssessmentPages.hs
   build-depends:       base,
-                       bytestring,
+                       bytestring >=0.10 && <0.12,
                        optparse-applicative >= 0.12,
                        aeson,
                        aeson-pretty,
@@ -45,7 +45,7 @@ executable merge-assessment-pages
 executable assessments-to-qrels
   main-is:             AssessmentsToQrels.hs
   build-depends:       base,
-                       bytestring,
+                       bytestring >=0.10 && <0.12,
                        optparse-applicative >= 0.12,
                        aeson,
                        aeson-pretty,
@@ -64,7 +64,7 @@ executable assessments-to-qrels
 executable car-y3-assessment-page-eval
   main-is:             CarY3AssessmentPageEval.hs
   build-depends:       base,
-                       bytestring,
+                       bytestring >=0.10 && <0.12,
                        optparse-applicative >= 0.12,
                        aeson,
                        aeson-pretty,

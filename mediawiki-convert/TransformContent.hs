@@ -18,12 +18,12 @@ import CAR.ToolVersion
 
 helpDescr :: PP.Doc
 helpDescr =
-    "Predicate options:" <$$> PP.indent 4 options
+    "Filter corpus of pages via predicates:" <$$> PP.indent 4 options
   where
     cmd a b = PP.nest 8 (a <$$> b)
     options = PP.vsep
       [
-        cmd "need doc"                           "here"
+        -- cmd "need doc"                           "here"
       ]
 
 data ConfOpts = ConfOpts { forbiddenHeadings :: HS.HashSet T.Text

@@ -293,6 +293,26 @@ executable trec-car-cross-site
   default-language:    Haskell2010
 
 
+executable trec-car-jsonl
+  main-is:             JsonlConversionMain.hs
+  ghc-options:         -Wall -threaded -rtsopts -eventlog
+  build-depends:       base,
+                       bytestring >=0.10 && <0.12,
+                       unordered-containers,
+                       trifecta >= 1.5,
+                       parsers >= 0.12,
+                       ansi-wl-pprint,
+                       text,
+                       optparse-applicative >= 0.12,
+                       hashable,
+                       zlib >=0.6,
+                       aeson >= 1.0,
+                       trec-car-tools,
+                       trec-car-types,
+                       mediawiki-convert
+  default-language:    Haskell2010
+
+
 test-suite tests
   main-is:             Test.hs
   type:                exitcode-stdio-1.0

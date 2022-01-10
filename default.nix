@@ -25,7 +25,7 @@ let
         mediawiki-import     = self.callCabal2nix "mediawiki-import" (localDir ./mediawiki-import) {};
         mediawiki-convert    = self.callCabal2nix "mediawiki-convert" (localDir ./mediawiki-convert) {};
         filter-duplicates    = self.callCabal2nix "filter-duplicates" (localDir ./filter-duplicates) {};
-        assessment-eval      = self.callCabal2nix "assessment-eval" (localDir ./assessment-eval) {};
+        # assessment-eval      = self.callCabal2nix "assessment-eval" (localDir ./assessment-eval) {};
         graph-algorithms     = self.callCabal2nix "graph-algorithms" (localDir ./trec-car-tools-haskell/simplir/graph-algorithms) {};
         tqa-import           = self.callCabal2nix "tqa-import" (localDir ./tqa-import) {};
         miso-types           = self.callCabal2nix "miso-types" (localDir ./miso-types) {};

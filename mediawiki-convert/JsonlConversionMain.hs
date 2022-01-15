@@ -24,6 +24,7 @@ import Data.Aeson as Aeson
 import Data.Aeson.Types as Aeson
 
 import CAR.Types
+import CAR.Types.Files
 import CAR.ToolVersion
 import CAR.CarJSON
 
@@ -50,10 +51,20 @@ opts =
 
 --  -------------- file writing and command line handling -------------
 
-writeGzJsonLRunFile ::  FilePath -> [Page] -> IO()
-writeGzJsonLRunFile fname pages = do
+writeGzJsonLPagesFile ::  FilePath -> [Page] -> IO()
+writeGzJsonLPagesFile fname pages = do
     let lines :: [BSL.ByteString]
         lines = fmap (Aeson.encode . S) $ pages
+    BSL.writeFile fname 
+        $ GZip.compressWith (GZip.defaultCompressParams { GZip.compressLevel = GZip.bestSpeed })  
+        $ BSL.unlines $ lines
+    Prelude.putStrLn  $ "Writing JsonL.gz to "<> fname
+
+
+writeGzJsonLParagraphsFile ::  FilePath -> [Paragraph] -> IO()
+writeGzJsonLParagraphsFile fname paras = do
+    let lines :: [BSL.ByteString]
+        lines = fmap (Aeson.encode . S) $ paras
     BSL.writeFile fname 
         $ GZip.compressWith (GZip.defaultCompressParams { GZip.compressLevel = GZip.bestSpeed })  
         $ BSL.unlines $ lines
@@ -65,7 +76,13 @@ writeGzJsonLRunFile fname pages = do
 main :: IO ()
 main = do
     (inputFile, outputFile) <- execParser' 1 (helper <*> opts) (progDescDoc $ Just helpDescr)
-    (prov, pages) <- readPagesOrOutlinesAsPagesWithProvenance inputFile
-    writeGzJsonLRunFile outputFile pages
+    carHeader <- readCarFileType inputFile
+    case (carHeader) of
+      Just ParagraphsFile -> do
+        (_prov, paragraphs) <- readParagraphsFileWithProvenance inputFile
+        writeGzJsonLParagraphsFile outputFile paragraphs
+      _ -> do   -- pages or outlines type
+        (_prov, pages) <- readPagesOrOutlinesAsPagesWithProvenance inputFile
+        writeGzJsonLPagesFile outputFile pages
 
 

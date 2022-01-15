@@ -64,7 +64,7 @@ main = do
     lines <- BSL.split '\n' . decompress <$> BSL.readFile inputFile
           :: IO [BSL.ByteString] 
     let chunks = S.chunksOf numLines lines
-    forM_ (zip chunks [1..]) (\(chunk, i) -> 
+    forM_ (zip [1..] chunks) (\(i, chunk) -> 
             let outputFile = (filePattern outputFile i)
             in writeGzJsonLFile outputFile chunk
         )

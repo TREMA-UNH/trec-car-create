@@ -45,7 +45,7 @@ opts :: Options.Applicative.Parser (FilePath, FilePath, Int)
 opts =
     (,,)
     <$> argument str (help "input file" <> metavar "JSONL.gz")
-    <*> option str (short 'o' <> long "output" <> metavar "FILE" <> help "Output file template, will substitute `$n` for filename ex: \"input-$n.jsonl.gz\" . Will be written as gzip encoded JSONL")
+    <*> option str (short 'o' <> long "output" <> metavar "FILE" <> help "Output file template, will substitute chunk number `{n}` for filename ex: \"input-{n}.jsonl.gz\" . Will be written as gzip encoded JSONL")
     <*> option auto (short 'n' <> long "num" <> metavar "N" <> help "Number of objects in each splitted file.")
 
 
@@ -65,10 +65,10 @@ main = do
           :: IO [BSL.ByteString] 
     let chunks = S.chunksOf numLines lines
     forM_ (zip [1..] chunks) (\(i, chunk) -> 
-            let outputFile = (filePattern outputFile i)
+            let outputFile = (filePattern outputFileTemplate i)
             in writeGzJsonLFile outputFile chunk
         )
   where filePattern outputFileTemplate i =
             T.unpack
-            $ T.replace "$n" (T.pack $ show i)
+            $ T.replace "{n}" (T.pack $ show i)
             $ T.pack outputFileTemplate

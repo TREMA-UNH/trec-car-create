@@ -75,7 +75,7 @@ writeGzJsonLParagraphsFile fname paras = do
 
 main :: IO ()
 main = do
-    (inputFile, outputFile) <- execParser' 1 (helper <*> opts) (progDescDoc $ Just helpDescr)
+    (inputFile, outputFile) <- execParser' 2 (helper <*> opts) (progDescDoc $ Just helpDescr)
     carHeader <- readCarFileType inputFile
     case (carHeader) of
       Just ParagraphsFile -> do

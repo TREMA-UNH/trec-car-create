@@ -116,7 +116,7 @@ parseJsonL = zipWith f [1..] . BSL.lines
 
 main :: IO ()
 main = do
-    (inputFile, outputFile, prov, cborAs) <- execParser' 1 (helper <*> opts) (progDescDoc $ Just helpDescr)
+    (inputFile, outputFile, prov, cborAs) <- execParser' 2 (helper <*> opts) (progDescDoc $ Just helpDescr)
 
     sPages <- parseJsonL . decompress <$> BSL.readFile inputFile
               :: IO [S Page]

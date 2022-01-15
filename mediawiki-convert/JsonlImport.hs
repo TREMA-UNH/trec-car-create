@@ -47,26 +47,36 @@ helpDescr =
 data ConfOpts = ConfOpts { 
                          }
 
-opts :: Options.Applicative.Parser (FilePath, FilePath, Provenance)
+data CborAs = AsOutlines | AsPages                         
+
+opts :: Options.Applicative.Parser (FilePath, FilePath, Provenance, CborAs)
 opts =
-    (,,)
+    (,,,)
     <$> argument str (help "input pages file as `.jsonl.gz` must follow CAR datamodel." <> metavar "JSON.GZ")
     <*> option str (short 'o' <> long "output" <> metavar "CBOR" <> help "CBOR Output file")
     <*> provParser
+    <*> flag AsPages AsOutlines (long "as-outlines" <> help "If set, writes an outlines.cbor, default is a pages.cbor")
 
 
 --  -------------- file writing and command line handling -------------
 
 
+pageToStubFilter :: Page -> Stub
+pageToStubFilter Page {..} =
+          Stub { stubName = pageName
+               , stubPageId = pageId
+               , stubType = pageType
+               , stubMetadata = pageMetadata
+               , stubSkeleton = mapMaybe filterSkeletonToStub $ pageSkeleton
+               }
 
--- writeGzJsonLRunFile ::  FilePath -> [Page] -> IO()
--- writeGzJsonLRunFile fname pages = do
---     let lines :: [BSL.ByteString]
---         lines = fmap (Aeson.encode . S) $ pages
---     BSL.writeFile fname 
---         $ GZip.compressWith (GZip.defaultCompressParams { GZip.compressLevel = GZip.bestSpeed })  
---         $ BSL.unlines $ lines
---     Prelude.putStrLn  $ "Writing JsonL.gz to "<> fname
+
+filterSkeletonToStub :: PageSkeleton -> Maybe PageSkeleton
+filterSkeletonToStub (Para _) = Nothing
+filterSkeletonToStub (Image _ _) = Nothing
+filterSkeletonToStub (Infobox _ _) = Nothing
+filterSkeletonToStub (List _ _) = Nothing
+filterSkeletonToStub (Section heading hid skel) = Just $ Section heading hid (mapMaybe filterSkeletonToStub skel)
 
 
 
@@ -97,21 +107,26 @@ parseJsonL :: forall a. Aeson.FromJSON a => BSL.ByteString -> [a]
 parseJsonL = zipWith f [1..] . BSL.lines
   where
     f :: Int -> BSL.ByteString -> a
-    f !lineNo bs = 
+    f !_lineNo bs = 
       case Aeson.eitherDecode bs of
-        Left err -> error "parseJsonL"
+        Left err -> error ("parseJsonL " <> err)
         Right x -> x
 
 
 
 main :: IO ()
 main = do
-    (inputFile, outputFile, prov) <- execParser' 1 (helper <*> opts) (progDescDoc $ Just helpDescr)
+    (inputFile, outputFile, prov, cborAs) <- execParser' 1 (helper <*> opts) (progDescDoc $ Just helpDescr)
 
     sPages <- parseJsonL . decompress <$> BSL.readFile inputFile
               :: IO [S Page]
     let pages = unwrapS sPages
     
-    writeCarFile  outputFile prov pages
+    case cborAs of
+      AsOutlines -> let stubs :: [Stub] 
+                        stubs = fmap pageToStubFilter pages
+                    in writeCarFile outputFile prov stubs
+      _ ->  writeCarFile  outputFile prov pages
+    
 
 

@@ -65,7 +65,7 @@ writeGzJsonLRunFile fname pages = do
 main :: IO ()
 main = do
     (inputFile, outputFile) <- execParser' 1 (helper <*> opts) (progDescDoc $ Just helpDescr)
-    (prov, pages) <- readPagesFileWithProvenance inputFile
+    (prov, pages) <- readPagesOrOutlinesAsPagesWithProvenance inputFile
     writeGzJsonLRunFile outputFile pages
 
 

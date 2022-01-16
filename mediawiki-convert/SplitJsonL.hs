@@ -65,11 +65,7 @@ main = do
           :: IO [BSL.ByteString] 
     let chunks = S.chunksOf numLines lines
     forM_ (zip [1..] chunks) (\(i, chunk) -> 
-<<<<<<< Updated upstream
-            let outputFile = (filePattern outputFileTemplate i)
-=======
             let outputFile = filePattern outputFileTemplate i
->>>>>>> Stashed changes
             in writeGzJsonLFile outputFile chunk
         )
   where filePattern outputFileTemplate i =

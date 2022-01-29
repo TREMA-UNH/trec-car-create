@@ -10,19 +10,14 @@
 import Data.Monoid hiding (All, Any)
 import Options.Applicative
 import Control.Monad
--- import qualified Data.HashSet as HS
 import qualified Data.Text as T
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Text.PrettyPrint.ANSI.Leijen ((<$$>))
--- import Data.Maybe
--- import Data.Char
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import qualified Codec.Compression.GZip as GZip
--- import Codec.Compression.Zlib.Internal (DecompressError)
 import Data.List.Split as S
 
--- import Data.Aeson as Aeson
--- import Data.Aeson.Types as Aeson
+
 
 import SimplIR.DataSource.Compression.Lazy
 import CAR.ToolVersion

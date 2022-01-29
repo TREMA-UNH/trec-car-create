@@ -75,6 +75,13 @@ k_PAGE_TYPE = "page_type"
 k_REDIRECT_TARGET = "redirect_target"
 k_METADATA = "metadata"
 
+k_PROV_SITE_PROVENANCES = "site_provenances"
+k_PROV_RELEASE_NAME = "release_name"
+k_PROV_COMMENTS = "comments"
+k_PROV_SITE_ID = "site_id"
+k_PROV_LANGUAGE = "language"
+k_PROV_SOURCE_NAME = "source_name"
+k_PROV_SITE_COMMENTS = "site_comments" 
 
 
 -- | Serialized newtype for JSON representation
@@ -350,4 +357,46 @@ instance Aeson.FromJSON (S Page) where
         pageSkeleton <- fmap (\(S x) -> x)  <$> content Aeson..: k_SKELETON
 
         return $ S (Page {..})
+
+
+----------- Provenance ------
+
+instance Aeson.ToJSON (S SiteProvenance) where
+    toJSON (S SiteProvenance{language = Language language', provSiteId = SiteId provSiteId', ..}) =
+        object
+        $ [ k_PROV_SITE_ID .= provSiteId'
+            , k_PROV_LANGUAGE .= language'
+            , k_PROV_SOURCE_NAME .= sourceName
+            , k_PROV_SITE_COMMENTS .= siteComments       
+           ] 
+   
+
+instance Aeson.FromJSON (S SiteProvenance) where
+    parseJSON = Aeson.withObject "S SiteProvenance" $ \content -> do
+        provSiteId' <-  content Aeson..: k_PROV_SITE_ID
+        language' <- content Aeson..: k_PROV_LANGUAGE
+        sourceName <- content Aeson..: k_PROV_SOURCE_NAME
+        siteComments <- content Aeson..: k_PROV_SITE_COMMENTS
+
+        return $ S (SiteProvenance {language = Language language'
+                                   ,provSiteId = SiteId provSiteId'
+                                   , ..})
+
+instance Aeson.ToJSON (S Provenance) where
+    toJSON (S Provenance{..}) =
+        object
+            [ k_PROV_SITE_PROVENANCES .= fmap S siteProvenances
+            , k_PROV_RELEASE_NAME .= dataReleaseName
+            , k_PROV_COMMENTS .= comments
+            ] 
+   
+
+instance Aeson.FromJSON (S Provenance) where
+    parseJSON = Aeson.withObject "S Provenance" $ \content -> do
+        siteProvenances <- unwrapS <$>  content Aeson..: k_PROV_SITE_PROVENANCES
+        dataReleaseName <- content Aeson..: k_PROV_RELEASE_NAME
+        comments <- content Aeson..: k_PROV_COMMENTS
+
+        return $ S (Provenance {transforms = [], ..})
+
 

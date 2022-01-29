@@ -9,10 +9,10 @@
 {-# LANGUAGE MultiWayIf #-}
 
 
-module CAR.CarJSON 
+module CAR.CarJSON
     ( -- * Aeson FromJSON and ToJSON for CAR.AST data types
-        S(..)
-      , unwrapS
+      S(..)
+    , unwrapS
     ) where
 
 import Data.Monoid hiding (All, Any)
@@ -65,6 +65,7 @@ k_DISAMBIGUATION_IDS = "disambiguation_ids"
 k_CATEGORY_NAMES = "category_names"
 k_CATEGORY_IDS = "category_ids"
 k_INLINK_IDS = "inlink_ids"
+k_PAGE_TAGS = "page_tags"
 k_OLD_INLINK_ANCHORS = "old_inlink_anchors"
 k_INLINK_ANCHORS = "inlink_anchors"
 k_WIKIDATA_QID = "wiki_data_qid"
@@ -85,11 +86,11 @@ deriving instance Aeson.ToJSON a => Aeson.ToJSON (S [a])
 deriving instance Aeson.FromJSON a => Aeson.FromJSON (S [a])
 
 unwrapS :: Functor f => f (S a) -> f a
-unwrapS xs = fmap (\(S a) -> a) xs 
+unwrapS xs = fmap (\(S a) -> a) xs
 
 
-instance Aeson.ToJSON (S Link) where 
-    toJSON (S Link {..})= 
+instance Aeson.ToJSON (S Link) where
+    toJSON (S Link {..})=
         object
         $ [ k_TEXT .= linkAnchor
          , k_TARGET_PAGE .= linkTarget
@@ -113,7 +114,7 @@ data InfoboxEntry = InfoboxEntry { infoboxKey :: T.Text
 
 
 instance Aeson.ToJSON (S InfoboxEntry) where 
-    toJSON (S InfoboxEntry{..}) = 
+    toJSON (S InfoboxEntry{..}) =
         object 
         $ [ k_KEY .= infoboxKey
           , k_VALUE .= fmap S infoboxValue
@@ -129,7 +130,7 @@ instance Aeson.FromJSON (S InfoboxEntry) where
 
 instance Aeson.ToJSON (S ParaBody) where 
     toJSON (S (ParaText txt)) = object [k_TEXT .= txt]
-    toJSON (S (ParaLink Link {..})) = 
+    toJSON (S (ParaLink Link {..})) =
         object
         $ [ k_TEXT .= linkAnchor
          , k_TARGET_PAGE .= linkTarget
@@ -151,7 +152,7 @@ instance Aeson.FromJSON (S ParaBody) where
 
 
 instance Aeson.ToJSON (S Paragraph) where 
-    toJSON (S Paragraph {..}) = 
+    toJSON (S Paragraph {..}) =
         object
         $ [ k_PARA_ID .= unpackParagraphId paraId
           , k_PARA_BODY.= fmap S paraBody
@@ -173,18 +174,18 @@ instance Aeson.ToJSON (S PageSkeleton) where
           , k_HEADING_ID .= unpackHeadingId headingId
           , k_SKELETON .=  fmap S sectionSkeleton
           ]
-    toJSON (S (Para paragraph )) = 
+    toJSON (S (Para paragraph )) =
         object 
         $ [ k_TYPE .= t_PARAGRAPH
           , k_PARAGRAPH .= S paragraph
           ]
-    toJSON (S (List indent paragraph )) = 
+    toJSON (S (List indent paragraph )) =
         object 
         $ [ k_TYPE .= t_LIST
           , k_INDENT .= indent
           , k_ENTRY .= S paragraph
           ]
-    toJSON (S (Image imageFile caption)) = 
+    toJSON (S (Image imageFile caption)) =
         object 
         $ [ k_TYPE .= t_IMAGE
           , k_IMAGE_FILE .= imageFile
@@ -194,7 +195,7 @@ instance Aeson.ToJSON (S PageSkeleton) where
         object 
         $ [ k_TYPE .= t_INFOBOX
           , k_INFOBOX_NAME .= infoboxName
-          , k_INFOBOX_ENTRIES .= 
+          , k_INFOBOX_ENTRIES .=
                 fmap (\(key,skel) -> S (InfoboxEntry key skel)) infoboxEntries
           ]
 
@@ -230,33 +231,35 @@ instance Aeson.ToJSON (S PageMetadata) where
         object $ fmap metadataItemToJSON metadataItems
       
 metadataItemToJSON :: MetadataItem ->  (T.Text, Value) -- Aeson.Pair
-metadataItemToJSON (RedirectNames pageNames) = 
+metadataItemToJSON (RedirectNames pageNames) =
     k_REDIRECT_NAMES .= pageNames
-metadataItemToJSON (DisambiguationNames pageNames) = 
+metadataItemToJSON (DisambiguationNames pageNames) =
     k_DISAMBIGUATION_NAMES .= pageNames
-metadataItemToJSON (DisambiguationIds pageIds) = 
+metadataItemToJSON (DisambiguationIds pageIds) =
     k_DISAMBIGUATION_IDS .= pageIds
-metadataItemToJSON (CategoryNames pageNames) = 
+metadataItemToJSON (CategoryNames pageNames) =
     k_CATEGORY_NAMES .= pageNames
-metadataItemToJSON (CategoryIds pageIds) = 
+metadataItemToJSON (CategoryIds pageIds) =
     k_CATEGORY_IDS .= pageIds
-metadataItemToJSON (InlinkIds pageIds) = 
+metadataItemToJSON (InlinkIds pageIds) =
     k_INLINK_IDS .= pageIds
+metadataItemToJSON (PageTags tags) =
+    k_PAGE_TAGS .= tags
 
-metadataItemToJSON (OldInlinkAnchors texts) = 
+metadataItemToJSON (OldInlinkAnchors texts) =
     k_OLD_INLINK_ANCHORS .= texts
-metadataItemToJSON (InlinkAnchors anchorStats) = 
+metadataItemToJSON (InlinkAnchors anchorStats) =
     k_INLINK_ANCHORS .= fmap anchorStatToJSON anchorStats
 
-metadataItemToJSON (WikiDataQID wikiDataId) = 
+metadataItemToJSON (WikiDataQID wikiDataId) =
     k_WIKIDATA_QID .= wikiDataId
-metadataItemToJSON (WikiSiteId siteId) = 
+metadataItemToJSON (WikiSiteId siteId) =
     k_WIKI_SITE_ID .= siteId
 
 metadataItemToJSON m@(UnknownMetadata _a _b _terms) = error $ "Can produce JSON for UnknownMetadata items: "<> show m
 
 anchorStatToJSON :: (T.Text, Int) -> Aeson.Value
-anchorStatToJSON (anchor, freq) = 
+anchorStatToJSON (anchor, freq) =
     object $ [ k_TEXT .= anchor, k_FREQ .= freq ]
 
 
@@ -273,6 +276,7 @@ instance Aeson.FromJSON (S PageMetadata) where
         categoryNames <- parseMeta CategoryNames k_CATEGORY_NAMES
         categoryIds <- parseMeta CategoryIds k_CATEGORY_IDS
         inlinkIds <- parseMeta InlinkIds  k_INLINK_IDS
+        pageTags <- parseMeta PageTags k_PAGE_TAGS
 
         oldInlinkAnchors <- parseMeta OldInlinkAnchors k_OLD_INLINK_ANCHORS
         inlinkAnchors <- do
@@ -284,27 +288,28 @@ instance Aeson.FromJSON (S PageMetadata) where
             maybeAnchors <- content Aeson..:? k_INLINK_ANCHORS
                         --  :: Aeson.Parser (Maybe (V.Vector Aeson.Value))
             case maybeAnchors of
-                Just anchors ->  Just . InlinkAnchors <$> mapM anchorStatFromJSON anchors            
+                Just anchors ->  Just . InlinkAnchors <$> mapM anchorStatFromJSON anchors
                 Nothing -> return Nothing
 
         wikiDataQid <- parseMeta WikiDataQID k_WIKIDATA_QID
         wikiSiteId <- parseMeta WikiSiteId k_WIKI_SITE_ID
-        
+
         return $ S (PageMetadata 
                       $ catMaybes [ redirectNames
-                                 , disambiguationNames
-                                 , disambiguationIds
-                                 , categoryNames
-                                 , categoryIds
-                                 , inlinkIds
-                                 , oldInlinkAnchors
-                                 , inlinkAnchors
-                                 , wikiDataQid 
-                                 , wikiSiteId
-                                 ] )
+                                  , disambiguationNames
+                                  , disambiguationIds
+                                  , categoryNames
+                                  , categoryIds
+                                  , inlinkIds
+                                  , oldInlinkAnchors
+                                  , inlinkAnchors
+                                  , wikiDataQid
+                                  , wikiSiteId
+                                  , pageTags
+                                  ] )
 
 anchorStatFromJSON :: Aeson.Value -> Aeson.Parser (T.Text, Int)
-anchorStatFromJSON = 
+anchorStatFromJSON =
     Aeson.withObject "anchorStatFromJSON" $ \content -> do
         anchor <- content Aeson..: k_TEXT
         freq <- content Aeson..: k_FREQ

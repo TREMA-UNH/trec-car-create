@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module CAR.Import.ConfigFile where
@@ -85,6 +86,7 @@ showResolutionPart (TRNamedArg n) = "{{"++T.unpack n++"}}"
 data ConfigFile = ConfigFile { disambiguationTemplates :: [TemplateTag]
                              , templateResolutions :: HM.HashMap TemplateTag TemplateResolution
                              , infoboxTemplates :: HS.HashSet TemplateTag
+                             , pageTagTemplates :: HM.HashMap TemplateTag T.Text
                              }
                 deriving (Generic)
 instance FromJSON ConfigFile
@@ -94,13 +96,28 @@ configFileToConfig :: T.Text -> ConfigFile -> Config
 configFileToConfig categoryNamespaceName c =
     Config { isCategory = \name -> categoryNamespaceName `T.isPrefixOf` getPageName name
            , isDisambiguation = \_ -> any (`elem` disambiguationTemplates c) . mapMaybe isTemplate
-           , isInfoboxTemplate = 
-               let infoboxTemplates' = map T.toCaseFold $ HS.toList $ infoboxTemplates c
-               in \templateName ->   
-                let templateName' = T.toCaseFold templateName
-                in any (`T.isPrefixOf` templateName') infoboxTemplates'
-                     -- Old Infobox handling: tag `HS.member` infoboxTemplates c
-           , resolveTemplate = \tag args -> do
-                 res <- HM.lookup tag (templateResolutions c)
-                 runTemplateResolution res args
+           , isInfoboxTemplate
+           , isPageTagTemplate
+           , resolveTemplate
            }
+  where
+    isInfoboxTemplate =
+      let infoboxTemplates' = map T.toCaseFold $ HS.toList $ infoboxTemplates c
+      in \templateName ->
+        let templateName' = T.toCaseFold templateName
+        in any (`T.isPrefixOf` templateName') infoboxTemplates'
+           -- Old Infobox handling: tag `HS.member` infoboxTemplates c
+
+    isPageTagTemplate =
+      let pageTagTemplates' =
+              HM.fromList
+                [ (T.toCaseFold k, v)
+                | (k,v) <- HM.toList (pageTagTemplates c)
+                ]
+      in \templateName ->
+        let templateName' = T.toCaseFold templateName
+        in HM.lookup templateName' pageTagTemplates'
+
+    resolveTemplate tag args = do
+      res <- HM.lookup tag (templateResolutions c)
+      runTemplateResolution res args

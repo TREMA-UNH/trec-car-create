@@ -27,6 +27,7 @@ import CAR.Import.Utils
 data Config = Config { isCategory :: PageName -> Bool
                      , isDisambiguation :: PageName -> [Doc] -> Bool
                      , isInfoboxTemplate :: TemplateTag -> Bool
+                     , isPageTagTemplate :: TemplateTag -> Maybe T.Text
                      , resolveTemplate :: TemplateTag -> TemplateHandler
                      }
 
@@ -70,6 +71,7 @@ toPage config@Config{..} site WikiDoc{..} =
         skeleton = docsToSkeletons config site pageId contents
         categories =  filter (isCategory . linkTarget)
                      $ foldMap pageSkeletonLinks skeleton
+        pageTags = mapMaybe isPageTag contents
 
         pageType
           | isCategory name                 = CategoryPage
@@ -79,7 +81,15 @@ toPage config@Config{..} site WikiDoc{..} =
         metadata =
             setMetadata _CategoryNames (map linkTarget categories)
             $ setMetadata _CategoryIds (map linkTargetId categories)
+            $ setMetadata _PageTags pageTags
             $ emptyPageMetadata
+
+    isPageTag :: Doc -> Maybe T.Text
+    isPageTag doc
+      | Just tmpl <- isTemplate doc
+      = isPageTagTemplate tmpl
+      | otherwise
+      = Nothing
 
 -- | Identify the target of a redirect page.
 --

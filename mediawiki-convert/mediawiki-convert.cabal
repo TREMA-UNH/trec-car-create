@@ -20,7 +20,6 @@ library
                        CAR.FillMetadata
                        CAR.FilterPred
                        CAR.Utils.Redirects
-                       CAR.CarJSON
                        WikiData
                        StreamJSON
   hs-source-dirs:      src

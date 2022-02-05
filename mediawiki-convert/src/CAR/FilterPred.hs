@@ -34,6 +34,8 @@ data Pred a = NameContains T.Text
             | IsRedirect
             | IsDisambiguation
             | IsCategory
+            | HasWikidataQid (HS.HashSet WikiDataId)
+            | HasPageTag (HS.HashSet T.Text)
 
             | Any [Pred a]
             | All [Pred a]
@@ -53,11 +55,14 @@ runPred _ (PageHashMod s x y)  = pure $ PageHashMod s x y
 runPred _ IsRedirect           = pure IsRedirect
 runPred _ IsDisambiguation     = pure IsDisambiguation
 runPred _ IsCategory           = pure IsCategory
+runPred _ (HasWikidataQid qids)       = pure $ HasWikidataQid qids
+runPred _ (HasPageTag tags)       = pure $ HasPageTag tags
 runPred f (Any x)     = Any <$> traverse (runPred f) x
 runPred f (All x)     = All <$> traverse (runPred f) x
 runPred f (Negate x)  = Negate <$> runPred f x
 runPred _ TruePred    = pure TruePred
 runPred f (Pure x)    = f x
+runPred _ _ = undefined
 
 parsePred :: Parser a -> Parser (Pred a)
 parsePred inj = term
@@ -83,6 +88,7 @@ parsePred inj = term
         asum [ nameContains, nameHasPrefix, nameHasSuffix
              , nameInSet, hasCategoryContaining, pageHashMod
              , testSet, trainSet, foldPred, isRedirect, isDisambiguation, isCategory
+             , hasWikidataQid, hasPageTag
              , truePred
              , Pure <$> inj
              ]
@@ -114,6 +120,19 @@ parsePred inj = term
     nameInSet = do
         void $ textSymbol "name-in-set"
         NameInSet . HS.fromList . map PageName <$> listOf string'
+
+    hasWikidataQid = do
+        void $ textSymbol "qid-in-set"
+        let wikiDataId = do
+                s <- string'
+                case readWikiDataId s of
+                    Nothing -> fail $ "mal-formed WikiDataId "++T.unpack s
+                    Just wdid -> return wdid
+        HasWikidataQid . HS.fromList <$> listOf wikiDataId
+
+    hasPageTag = do 
+        void $ textSymbol "has-page-tag"
+        HasPageTag . HS.fromList <$> listOf string'
 
     pageIdInSet = do
         void $ textSymbol "pageid-in-set"
@@ -160,8 +179,23 @@ interpret pageNameTranslate pred page =
       IsRedirect                    -> isJust $ pageRedirect page
       IsDisambiguation              -> pageIsDisambiguation page
       IsCategory                    -> pageIsCategory page
+      HasWikidataQid qids           -> pageHasWikidataQid page qids
+      HasPageTag tags               -> pageHasPageTag page tags
       Any preds                     -> any (\pred' -> interpret pageNameTranslate pred' page) preds
       All preds                     -> all (\pred' -> interpret pageNameTranslate pred' page) preds
       Negate p                      -> not $ interpret pageNameTranslate p page
       TruePred                      -> True
       Pure _                        -> error "Impossible"
+
+  where pageHasWikidataQid :: Page -> HS.HashSet WikiDataId -> Bool
+        pageHasWikidataQid page@Page{pageMetadata = meta}  targetQids =
+            case getMetadata _WikiDataQID meta of
+                Just qid -> qid `HS.member` targetQids
+                _ -> error $ "WikidataQid information is not available for page "<> show page
+
+        pageHasPageTag :: Page -> HS.HashSet (T.Text) -> Bool
+        pageHasPageTag page@Page{pageMetadata = meta} targetTags  =
+            case getMetadata _PageTags meta of
+                Just tags -> any  (`HS.member` targetTags)  tags
+                _         -> False
+

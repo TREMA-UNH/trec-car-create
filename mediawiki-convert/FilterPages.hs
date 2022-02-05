@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Data.Monoid hiding (All, Any)
+import Data.Maybe (mapMaybe)
 import Data.Void
 import Control.Monad (void)
 import Options.Applicative
@@ -39,8 +40,12 @@ helpDescr =
         cmd "name-in-set [\"P1\", \"P2\", \"P3\"]"  "matches pages whose page names are in the given set {P1,P2,P3}",
         cmd "name-set-from-file FILE"          "like name-in-set but loads NAMEs from FILE",
         cmd "pageid-in-set [\"P1\", \"P2\", \"P3\"]"  "matches pages whose page ids are in the given set {P1,P2,P3}",
+        cmd "qid-in-set [\"Q1\", \"Q2\", \"Q3\"]" "matches pages with Wikidata QIDs in the given set {Q1,Q2,Q3} (note requires pages file with populated QIDs)",
+        cmd "has-page-tag [\"T1\", ...]"       "matches pages with the given Page Tags, e.g. \"Good article\"",
+        "",
         cmd "pageid-set-from-file FILE"        "like pageid-in-set but loads NAMEs from FILE",
         cmd "category-contains-from-file FILE" "like category-contain but loads SUBSTRs from FILE",
+        cmd "qid-set-from-file FILE"           "like qid-in-set but loads NAMEs from FILE",
         "",
         cmd "true"                             "always true",
         cmd "PRED1 | PRED2"                    "Boolean OR, matches predicate PRED1 or PRED2",
@@ -72,11 +77,12 @@ opts =
 data PredFromFile = NameSetFromFile FilePath
                   | PageIdSetFromFile FilePath
                   | HasCategoryContainingFromFile FilePath
+                  | WikidataQidSetFromFile FilePath
                   deriving (Show)
 
 predFromFile :: Tri.Parser PredFromFile
 predFromFile =
-    nameSet <|> pageIdSet <|> hasCategoryContaining
+    nameSet <|> pageIdSet <|> hasCategoryContaining <|> qidSet
   where
     nameSet = do
         void $ Tri.textSymbol "name-set-from-file"
@@ -90,6 +96,11 @@ predFromFile =
         void $ Tri.textSymbol "category-contains-from-file"
         HasCategoryContainingFromFile <$> Tri.stringLiteral
 
+    qidSet = do
+        void $ Tri.textSymbol "qid-set-from-file"
+        WikidataQidSetFromFile <$> Tri.stringLiteral
+
+
 runPredFromFile :: Pred PredFromFile -> IO (Pred Void)
 runPredFromFile = runPred go
   where
@@ -99,6 +110,8 @@ runPredFromFile = runPred go
         PageIdInSet . HS.fromList . map ( packPageId ) . lines <$> readFile path
     go (HasCategoryContainingFromFile path) =
         Any . map (HasCategoryContaining . T.pack) . filter (not . null) . lines <$> readFile path
+    go (WikidataQidSetFromFile path) =
+        HasWikidataQid . HS.fromList . mapMaybe (readWikiDataId . T.pack) . lines <$> readFile path
 
 main :: IO ()
 main = do

@@ -19,6 +19,7 @@ import Text.Parser.Token.Style
 
 import CAR.Types
 import CAR.Utils
+import CAR.KnowledgeBase (InlinkInfo(redirectPages))
 
 -- | Salt used by @hashable-1.2.5.0@
 defaultSalt :: Int
@@ -28,6 +29,7 @@ data Pred a = NameContains T.Text
             | NameHasPrefix T.Text
             | NameHasSuffix T.Text
             | NameInSet (HS.HashSet PageName)
+            | NameOrRedirectInSet (HS.HashSet PageName)
             | PageIdInSet (HS.HashSet PageId)
             | HasCategoryContaining T.Text
             | PageHashMod Int Int Int -- ^ for training/test split
@@ -49,6 +51,7 @@ runPred _ (NameContains x)     = pure $ NameContains x
 runPred _ (NameHasPrefix x)    = pure $ NameHasPrefix x
 runPred _ (NameHasSuffix x)    = pure $ NameHasSuffix x
 runPred _ (NameInSet x)        = pure $ NameInSet x
+runPred _ (NameOrRedirectInSet x)  = pure $ NameOrRedirectInSet x
 runPred _ (PageIdInSet x)        = pure $ PageIdInSet x
 runPred _ (HasCategoryContaining x)  = pure $ HasCategoryContaining x
 runPred _ (PageHashMod s x y)  = pure $ PageHashMod s x y
@@ -86,7 +89,7 @@ parsePred inj = term
 
     simple =
         asum [ nameContains, nameHasPrefix, nameHasSuffix
-             , nameInSet, hasCategoryContaining, pageHashMod
+             , nameInSet, nameOrRedirectInSet, hasCategoryContaining, pageHashMod
              , testSet, trainSet, foldPred, isRedirect, isDisambiguation, isCategory
              , hasWikidataQid, hasPageTag
              , truePred
@@ -120,6 +123,10 @@ parsePred inj = term
     nameInSet = do
         void $ textSymbol "name-in-set"
         NameInSet . HS.fromList . map PageName <$> listOf string'
+
+    nameOrRedirectInSet = do
+        void $ textSymbol "name-or-redirect-in-set"
+        NameOrRedirectInSet . HS.fromList . map PageName <$> listOf string'
 
     hasWikidataQid = do
         void $ textSymbol "qid-in-set"
@@ -172,6 +179,8 @@ interpret pageNameTranslate pred page =
       NameHasPrefix prefix          -> prefix `T.isPrefixOf` (getPageName $ pageNameTranslate $ pageName page)
       NameHasSuffix suffix          -> suffix `T.isSuffixOf` (getPageName $ pageNameTranslate $ pageName page)
       NameInSet names               -> (pageNameTranslate $ pageName page) `HS.member` names
+      NameOrRedirectInSet names     -> (pageNameTranslate $ pageName page) `HS.member` names 
+                                    || hasRedirectName page names
       PageIdInSet pageIds           -> (pageId page) `HS.member` pageIds
       HasCategoryContaining s       -> any (s `T.isInfixOf`) $ map (getPageName . pageNameTranslate) $ fromMaybe [] $ getMetadata _CategoryNames (pageMetadata page)
       PageHashMod salt n k          -> let h = hashWithSalt salt $ pageNameTranslate $ pageName page
@@ -198,4 +207,10 @@ interpret pageNameTranslate pred page =
             case getMetadata _PageTags meta of
                 Just tags -> any  (`HS.member` targetTags)  tags
                 _         -> False
+
+        hasRedirectName :: Page -> HS.HashSet (PageName) -> Bool
+        hasRedirectName page@Page{pageMetadata = meta} targetNames  =
+            case getMetadata _RedirectNames meta of
+                Just redirects -> any  (`HS.member` targetNames)  redirects
+                _              -> False
 

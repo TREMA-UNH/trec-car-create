@@ -38,11 +38,13 @@ helpDescr =
         cmd "category-contain SUBSTR"          "matches pages that are a member of a category that contains SUBSTR (case insensitive)",
         "",
         cmd "name-in-set [\"P1\", \"P2\", \"P3\"]"  "matches pages whose page names are in the given set {P1,P2,P3}",
-        cmd "name-set-from-file FILE"          "like name-in-set but loads NAMEs from FILE",
+        cmd "name-or-redirect-in-set [\"P1\", ..]"  "same as name-in-set but also matches in redirects (useful when pages are renamed)",
         cmd "pageid-in-set [\"P1\", \"P2\", \"P3\"]"  "matches pages whose page ids are in the given set {P1,P2,P3}",
         cmd "qid-in-set [\"Q1\", \"Q2\", \"Q3\"]" "matches pages with Wikidata QIDs in the given set {Q1,Q2,Q3} (note requires pages file with populated QIDs)",
         cmd "has-page-tag [\"T1\", ...]"       "matches pages with the given Page Tags, e.g. \"Good article\"",
         "",
+        cmd "name-set-from-file FILE"          "like name-in-set but loads NAMEs from FILE",
+        cmd "name-or-redirect-set-from-file FILE"  "like name-or-redirect-in-set but loads NAMEs from FILE",
         cmd "pageid-set-from-file FILE"        "like pageid-in-set but loads NAMEs from FILE",
         cmd "category-contains-from-file FILE" "like category-contain but loads SUBSTRs from FILE",
         cmd "qid-set-from-file FILE"           "like qid-in-set but loads NAMEs from FILE",
@@ -75,6 +77,7 @@ opts =
     siteId = SiteId . T.pack <$> str
 
 data PredFromFile = NameSetFromFile FilePath
+                  | NameOrRedirectSetFromFile FilePath
                   | PageIdSetFromFile FilePath
                   | HasCategoryContainingFromFile FilePath
                   | WikidataQidSetFromFile FilePath
@@ -82,11 +85,15 @@ data PredFromFile = NameSetFromFile FilePath
 
 predFromFile :: Tri.Parser PredFromFile
 predFromFile =
-    nameSet <|> pageIdSet <|> hasCategoryContaining <|> qidSet
+    nameSet <|> nameOrRedirect <|> pageIdSet <|> hasCategoryContaining <|> qidSet
   where
     nameSet = do
         void $ Tri.textSymbol "name-set-from-file"
         NameSetFromFile <$> Tri.stringLiteral
+
+    nameOrRedirect = do
+        void $ Tri.textSymbol "name-or-redirect-set-from-file"
+        NameOrRedirectSetFromFile <$> Tri.stringLiteral
 
     pageIdSet = do
         void $ Tri.textSymbol "pageid-set-from-file"
@@ -106,6 +113,8 @@ runPredFromFile = runPred go
   where
     go (NameSetFromFile path) =
         NameInSet . HS.fromList . map (packPageName) . lines <$> readFile path
+    go (NameOrRedirectSetFromFile path) =
+        NameOrRedirectInSet . HS.fromList . map (packPageName) . lines <$> readFile path
     go (PageIdSetFromFile path) =
         PageIdInSet . HS.fromList . map ( packPageId ) . lines <$> readFile path
     go (HasCategoryContainingFromFile path) =

@@ -372,8 +372,6 @@ executable trec-car-jsonl-import
                        mediawiki-convert
   default-language:    Haskell2010
 
-
-
 executable trec-car-cluster-benchmark
   main-is:             ExportClusterBenchmark.hs
   other-extensions:    DeriveGeneric, TypeApplications, RecordWildCards, ViewPatterns, OverloadedStrings, RankNTypes, ScopedTypeVariables, GADTs, TemplateHaskell, GeneralizedNewtypeDeriving, QuasiQuotes, StandaloneDeriving, BangPatterns
@@ -393,19 +391,19 @@ executable trec-car-cluster-benchmark
   default-language:    Haskell2010
 
 
-test-suite tests
-  main-is:             Test.hs
-  type:                exitcode-stdio-1.0
-  build-depends:       base,
-                       text,
-                       tasty,
-                       tasty-silver,
-                       tasty-hunit,
-                       unordered-containers,
-                       trec-car-tools,
-                       trec-car-types,
-                       mediawiki-convert,
-                       tagged
-  hs-source-dirs:      ./, tests
-  default-language:    Haskell2010
-  buildable:           False
+-- test-suite tests
+--   main-is:             Test.hs
+--   type:                exitcode-stdio-1.0
+--   build-depends:       base,
+--                        text,
+--                        tasty,
+--                        tasty-silver,
+--                        tasty-hunit,
+--                        unordered-containers,
+--                        trec-car-tools,
+--                        trec-car-types,
+--                        mediawiki-convert,
+--                        tagged
+--   hs-source-dirs:      ./, tests
+--   default-language:    Haskell2010
+--   buildable:           False

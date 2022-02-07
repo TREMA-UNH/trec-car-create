@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 
 import Control.Monad
 import Data.Foldable
@@ -11,14 +12,18 @@ import qualified Data.HashMap.Strict as HM
 import Data.List
 import System.FilePath
 
+import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
+
+
 import Options.Applicative
 
 import CAR.Types hiding (transform)
-import CAR.ToolVersion
+import CAR.ToolVersion 
 import CAR.CarExports as Exports
 import CAR.AnnotationsFile as AnnsFile
 import CAR.QRelFile
-import CAR.Utils (pageParasWithPaths)
+import CAR.Utils (pageParasWithPaths, paraLinks, paraToText, pageParas)
 import Data.ByteString.Char8 (hPutStrLn)
 
 
@@ -53,11 +58,15 @@ options =
   where
     exporter :: Parser Exporter
     exporter = asum
+        [
 ----- cluster ------
-        [ exportClusterParagraphAnnotations cutSectionPathTopLevel
+         exportClusterParagraphAnnotations cutSectionPathTopLevel
           <$> option str (long "para-toplevel-cluster" <> metavar "OUTPUT" <> help "Export cluster ground truth for paragraphs from toplevel")
-        ]
+----- entity-linking ------
+        , exportEntityLinkAnnotations 
+          <$> option str (long "entity-linking" <> metavar "OUTPUT" <> help "Export entity linking ground truth for paragraphs")
 ------
+        ]
 
 exportAllWithPrefix :: FilePath -> Exporter
 exportAllWithPrefix outpath prov pages= do
@@ -121,16 +130,9 @@ instance Aeson.FromJSON (ClusterBenchmark) where
         return $ ClusterBenchmark {..}
 
 
-printClusterBenchmark :: ClusterBenchmark -> String
-printClusterBenchmark ClusterBenchmark{..} = 
-  "query: " <>  (unpackPageId query) <>
-  "\n paraIds: "<> (unwords $ fmap unpackParagraphId elements) <>
-  "\n trueLabels" <> (unwords $ fmap escapeSectionPath $ fromMaybe [] trueLabels) <>
-  "\n trueClusters" <> (show trueClusters)
 
-
-writeGzJsonLClusterBenchmarkFile ::  FilePath -> [ClusterBenchmark] -> IO()
-writeGzJsonLClusterBenchmarkFile fname benchmarks = do
+writeGzJsonLBenchmarkFile :: ToJSON a =>  FilePath -> [a] -> IO()
+writeGzJsonLBenchmarkFile fname benchmarks = do
     let lines :: [BSL.ByteString]
         lines = fmap (Aeson.encode) $ benchmarks
     BSL.writeFile fname 
@@ -139,14 +141,21 @@ writeGzJsonLClusterBenchmarkFile fname benchmarks = do
     Prelude.putStrLn  $ "Writing ClusterBenchmark JsonL.gz to "<> fname
 
 
+printClusterBenchmark :: ClusterBenchmark -> String
+printClusterBenchmark ClusterBenchmark{..} = 
+  "query: " <>  (unpackPageId query) <>
+  "\n paraIds: "<> (unwords $ fmap unpackParagraphId elements) <>
+  "\n trueLabels" <> (unwords $ fmap escapeSectionPath $ fromMaybe [] trueLabels) <>
+  "\n trueClusters" <> (show trueClusters)
+
 
 -- Export cluster ground truth to work with scikit.learn cluster evaluation package
 exportClusterParagraphAnnotations :: (SectionPath -> SectionPath) -> FilePath -> Exporter
 exportClusterParagraphAnnotations cutSectionPath outPath _prov pagesToExport = do
-    putStr "Writing section relevance annotations..."
+    putStr "Writing cluster benchmark..."
     let benchmarks = fmap toClusterBenchmark pagesToExport
     -- putStrLn $ unlines $ fmap printClusterBenchmark $ benchmarks
-    writeGzJsonLClusterBenchmarkFile outPath benchmarks      
+    writeGzJsonLBenchmarkFile outPath benchmarks      
     -- putStrLn "done"
    where toClusterBenchmark :: Page -> ClusterBenchmark   
          toClusterBenchmark  page = 
@@ -170,6 +179,87 @@ exportClusterParagraphAnnotations cutSectionPath outPath _prov pagesToExport = d
                                      , trueClusters = [ clusterIdx HM.! s | (s, _p) <- clusterParas ]
                                     }
             in clusterBenchmark 
+
+-- ----------- entity linking -------
+
+
+data EntityLinkingBenchmark = EntityLinkingBenchmark 
+                            { query :: PageId
+                            , paragraphId :: ParagraphId
+                            , textOnlyParagraph :: Paragraph
+                            , trueLinkedParagraph :: Paragraph
+                            , trueLabelPageIds :: [PageId]
+                            }
+  deriving (Show, Eq)
+
+k_PARAGRAPH_ID = "paragraph_id"
+k_TEXT_ONLY_PARAGRAPH = "text_only_paragraph"
+k_TRUE_LINKED_PARAGRAPH = "true_linked_paragraph"
+k_TRUE_LABEL_PAGE_IDS = "true_label_page_ids"
+
+
+instance Aeson.ToJSON (EntityLinkingBenchmark) where 
+    toJSON (EntityLinkingBenchmark{..}) = 
+      Aeson.object 
+      $ [ k_QUERY .= S query
+        , k_PARAGRAPH_ID .= S paragraphId
+        , k_TEXT_ONLY_PARAGRAPH .= S textOnlyParagraph
+        , k_TRUE_LINKED_PARAGRAPH .= S trueLinkedParagraph
+        , k_TRUE_LABEL_PAGE_IDS .= fmap S trueLabelPageIds
+        ] 
+      
+
+instance Aeson.FromJSON (EntityLinkingBenchmark) where
+    parseJSON = Aeson.withObject "S EntityLinkingBenchmark" $ \content -> do
+        S query <- content .: k_QUERY 
+        S paragraphId <- content .: k_PARAGRAPH_ID
+        S textOnlyParagraph <- content .: k_TEXT_ONLY_PARAGRAPH
+        S trueLinkedParagraph <- content .: k_TRUE_LINKED_PARAGRAPH
+        trueLabelPageIds <- unwrapS <$> content .: k_TRUE_LABEL_PAGE_IDS
+        return $ EntityLinkingBenchmark {..}
+
+
+
+printEntityLinkingBenchmark :: EntityLinkingBenchmark -> String
+printEntityLinkingBenchmark EntityLinkingBenchmark{..} = 
+  "query: " <>  (unpackPageId query) <>
+  "\n paragraphId: "<> (unpackParagraphId paragraphId) <>
+  "\n textOnlyParagraph" <> (show textOnlyParagraph) <>
+  "\n trueLinkedParagraph" <> (show trueLinkedParagraph) <>
+  "\n trueLabelPageIds" <> (show $ fmap unpackPageId trueLabelPageIds)
+  
+
+
+
+-- Export cluster ground truth to work with scikit.learn cluster evaluation package
+exportEntityLinkAnnotations :: FilePath -> Exporter
+exportEntityLinkAnnotations outPath _prov pagesToExport = do
+    putStr "Writing entity linking benchmark..."
+    let benchmarks = [ toEntityLinkingBenchmark page para
+                     | page <- pagesToExport
+                     , para <- pageParas page
+                     ]
+    -- putStrLn $ unlines $ fmap printEntityLinkingBenchmark $ benchmarks
+    writeGzJsonLBenchmarkFile outPath benchmarks      
+    -- putStrLn "done"
+   where toEntityLinkingBenchmark :: Page -> Paragraph -> EntityLinkingBenchmark   
+         toEntityLinkingBenchmark  page paragraph = 
+            let textOnly = TL.toStrict $ paraToText paragraph
+                textOnlyParagraph = Paragraph {paraId = paraId paragraph
+                                            , paraBody = [ParaText textOnly]
+                                            }
+                entityIds = fmap linkTargetId $ paraLinks paragraph
+
+                entityLinkingBenchmark = EntityLinkingBenchmark {
+                                        query = pageId page
+                                        , paragraphId = paraId paragraph
+                                        , textOnlyParagraph = textOnlyParagraph 
+                                        , trueLinkedParagraph = paragraph
+                                        , trueLabelPageIds = entityIds
+                                        }
+            in entityLinkingBenchmark 
+
+
 -- -------------------------------------
 
 

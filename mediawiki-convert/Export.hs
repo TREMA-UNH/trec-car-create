@@ -6,6 +6,23 @@ import Data.Maybe
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import qualified Data.HashMap.Strict as HM
+-- Cluster benchmark
+
+import Data.Aeson
+    ( FromJSON(parseJSON), KeyValue((.=)), ToJSON(toJSON), (.:), (.:?) )
+
+import qualified Data.Aeson as Aeson
+import qualified Data.Aeson.Types as Aeson
+import CAR.CarJSON
+
+import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString.Lazy.Char8 as BSL
+import qualified Codec.Compression.GZip as GZip
+import Codec.Compression.Zlib.Internal (DecompressError)
+import CAR.Types.AST (SectionPath(SectionPath))
+
+
 import Data.List
 import System.FilePath
 
@@ -16,6 +33,9 @@ import CAR.ToolVersion
 import CAR.CarExports as Exports
 import CAR.AnnotationsFile as AnnsFile
 import CAR.QRelFile
+
+
+
 
 
 options :: Parser (FilePath, [PageName], [PageId], [Exporter])
@@ -51,7 +71,7 @@ options =
           <$> option str (long "para-article-qrel" <> metavar "OUTPUT" <> help "Export hierarchical qrel for paragraphs")
 
         , exportParagraphAnnotations cutSectionPathTopLevel id
-          <$> option str (long "para-toplevel-qrel" <> metavar "OUTPUT" <> help "Export hierarchical qrel for paragraphs")
+          <$> option str (long "para-toplevel-qrel" <> metavar "OUTPUT" <> help "Export toplevel qrel for paragraphs")
 
         , exportEntityAnnotations id id
           <$> option str (long "entity-hier-qrel" <> metavar "OUTPUT" <> help "Export hierarchical qrel for entities")
@@ -82,12 +102,23 @@ exportOutlines outPath prov pagesToExport = do
     writeCarFile skeletonFile prov $ map toStubSkeleton pagesToExport
     putStrLn "done"
 
+sortParagraphs :: [Paragraph] -> [Paragraph]
+sortParagraphs ps = sortByParagraphIds (paraId) ps
+
+
+sortByParagraphIds :: (a -> ParagraphId) -> [a] -> [a]
+sortByParagraphIds by as = fmap snd $ M.toAscList 
+                         $ M.fromList
+                         $  [ (by a, a)
+                            | a  <- as 
+                            ]
+
+
 exportParagraphs :: FilePath -> Exporter
 exportParagraphs outPath prov pagesToExport = do
     putStr "Writing paragraphs..."
     let paragraphsFile = outPath
-    let sortIt = map snd . M.toAscList . foldMap (\para -> M.singleton (paraId para) para)
-    writeCarFile paragraphsFile prov $ sortIt $ concatMap toParagraphs pagesToExport
+    writeCarFile paragraphsFile prov $ sortParagraphs $ concatMap toParagraphs pagesToExport
     putStrLn "done"
 
 exportParagraphAnnotations :: (SectionPath -> SectionPath) -> ([Annotation IsRelevant] -> [Annotation IsRelevant]) -> FilePath -> Exporter

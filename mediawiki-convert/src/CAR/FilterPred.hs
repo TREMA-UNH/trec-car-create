@@ -20,6 +20,7 @@ import Text.Parser.Token.Style
 import CAR.Types
 import CAR.Utils
 import CAR.KnowledgeBase (InlinkInfo(redirectPages))
+import Debug.Trace as Debug
 
 -- | Salt used by @hashable-1.2.5.0@
 defaultSalt :: Int
@@ -200,7 +201,8 @@ interpret pageNameTranslate pred page =
         pageHasWikidataQid page@Page{pageMetadata = meta}  targetQids =
             case getMetadata _WikiDataQID meta of
                 Just qid -> qid `HS.member` targetQids
-                _ -> error $ "WikidataQid information is not available for page "<> show page
+                _ -> Debug.trace ("WikidataQid information is not available for page "<> show page) False
+                   
 
         pageHasPageTag :: Page -> HS.HashSet (T.Text) -> Bool
         pageHasPageTag page@Page{pageMetadata = meta} targetTags  =

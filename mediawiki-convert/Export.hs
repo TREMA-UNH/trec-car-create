@@ -6,21 +6,6 @@ import Data.Maybe
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
-import qualified Data.HashMap.Strict as HM
--- Cluster benchmark
-
-import Data.Aeson
-    ( FromJSON(parseJSON), KeyValue((.=)), ToJSON(toJSON), (.:), (.:?) )
-
-import qualified Data.Aeson as Aeson
-import qualified Data.Aeson.Types as Aeson
-import CAR.CarJSON
-
-import qualified Data.ByteString.Lazy as BSL
-import qualified Data.ByteString.Lazy.Char8 as BSL
-import qualified Codec.Compression.GZip as GZip
-import Codec.Compression.Zlib.Internal (DecompressError)
-import CAR.Types.AST (SectionPath(SectionPath))
 
 
 import Data.List

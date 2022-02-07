@@ -201,7 +201,7 @@ interpret pageNameTranslate pred page =
         pageHasWikidataQid page@Page{pageMetadata = meta}  targetQids =
             case getMetadata _WikiDataQID meta of
                 Just qid -> qid `HS.member` targetQids
-                _ -> Debug.trace ("WikidataQid information is not available for page "<> show page) False
+                _ -> Debug.trace ("WikidataQid information is not available for page "<> unpackPageName (pageName page)) False
                    
 
         pageHasPageTag :: Page -> HS.HashSet (T.Text) -> Bool

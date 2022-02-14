@@ -146,12 +146,17 @@ printClusterBenchmark ClusterBenchmark{..} =
   "\n trueLabels" <> (unwords $ fmap escapeSectionPath $ fromMaybe [] trueLabels) <>
   "\n trueClusters" <> (show trueClusters)
 
+minClusterSize :: ClusterBenchmark -> Bool 
+minClusterSize ClusterBenchmark{..} =
+    let clusters = S.size $S.fromList trueClusters
+        elems = length elements
+    in clusters > 1 && elems >= 1 
 
 -- Export cluster ground truth to work with scikit.learn cluster evaluation package
 exportClusterParagraphAnnotations :: (SectionPath -> SectionPath) -> FilePath -> Exporter
 exportClusterParagraphAnnotations cutSectionPath outPath _prov pagesToExport = do
     putStr "Writing cluster benchmark..."
-    let benchmarks = fmap toClusterBenchmark pagesToExport
+    let benchmarks = filter minClusterSize $ fmap toClusterBenchmark pagesToExport
     -- putStrLn $ unlines $ fmap printClusterBenchmark $ benchmarks
     writeGzJsonLBenchmarkFile outPath benchmarks      
     -- putStrLn "done"
@@ -240,7 +245,8 @@ printEntityLinkingBenchmark EntityLinkingBenchmark{..} =
 exportEntityLinkAnnotations :: FilePath -> Exporter
 exportEntityLinkAnnotations outPath _prov pagesToExport = do
     putStr "Writing entity linking benchmark..."
-    let benchmarks = [ toEntityLinkingBenchmark page para
+    let benchmarks = filter minEntityLink
+                     [ toEntityLinkingBenchmark page para
                      | page <- pagesToExport
                      , para <- pageParas page
                      ]
@@ -266,6 +272,10 @@ exportEntityLinkAnnotations outPath _prov pagesToExport = do
             in entityLinkingBenchmark 
 
 
+         minEntityLink :: EntityLinkingBenchmark -> Bool 
+         minEntityLink EntityLinkingBenchmark{..} =
+             let numLinks = length trueLabelPageIds
+             in numLinks >= 1
 -- -------------------------------------
 
 

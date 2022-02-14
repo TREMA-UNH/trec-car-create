@@ -88,13 +88,13 @@ cutSectionPathTopLevel  (SectionPath pgId headinglist) =
 
 -- ----------- clustering -------------
 
-data ClusterBenchmark = ClusterBenchmark { query :: PageId
-                     , elements :: [ParagraphId]
+data ClusterBenchmark = ClusterBenchmark { queryId :: PageId
+                    , queryText :: PageName 
+                    , elements :: [ParagraphId]
                     , trueClusters :: [Int]
                     , trueLabels :: Maybe [SectionPath] }
   deriving (Show, Eq)
 
-k_QUERY = "query"
 k_ELEMENTS = "elements"
 k_TRUE_CLUSTERS = "true_cluster_idx"
 k_TRUE_LABELS = "true_cluster_labels"
@@ -103,7 +103,8 @@ k_TRUE_LABELS = "true_cluster_labels"
 instance Aeson.ToJSON (ClusterBenchmark) where 
     toJSON (ClusterBenchmark{..}) = 
       Aeson.object 
-      $ ([ k_QUERY .= S query
+      $ ([ k_QUERY_ID .= S queryId
+         , k_QUERY_TEXT .= S queryText
         , k_ELEMENTS .= map S elements
         , k_TRUE_CLUSTERS .= trueClusters
         ] ++
@@ -114,7 +115,8 @@ instance Aeson.ToJSON (ClusterBenchmark) where
 
 instance Aeson.FromJSON (ClusterBenchmark) where
     parseJSON = Aeson.withObject "S ClusterBenchmark" $ \content -> do
-        S query <- content .: k_QUERY 
+        S queryId <- content .: k_QUERY_ID
+        S queryText <- content .: k_QUERY_TEXT 
         elements <- unwrapS $ content .: k_ELEMENTS
         trueClusters <- unwrapS $ content .: k_TRUE_CLUSTERS
         -- let trueLabels = Nothing --- @laura Fix!
@@ -138,7 +140,8 @@ writeGzJsonLBenchmarkFile fname benchmarks = do
 
 printClusterBenchmark :: ClusterBenchmark -> String
 printClusterBenchmark ClusterBenchmark{..} = 
-  "query: " <>  (unpackPageId query) <>
+  "queryId: " <>  (unpackPageId queryId) <>
+  "\n queryText: " <>  (unpackPageName queryText) <>
   "\n paraIds: "<> (unwords $ fmap unpackParagraphId elements) <>
   "\n trueLabels" <> (unwords $ fmap escapeSectionPath $ fromMaybe [] trueLabels) <>
   "\n trueClusters" <> (show trueClusters)
@@ -168,7 +171,8 @@ exportClusterParagraphAnnotations cutSectionPath outPath _prov pagesToExport = d
                 clusterIdx = HM.fromList $ zip clusters [0 ..]
 
                 clusterBenchmark = ClusterBenchmark {
-                                     query = pageId page
+                                     queryId = pageId page
+                                     , queryText = pageName page
                                      , elements = fmap (paraId . snd) clusterParas
                                      , trueLabels = Just $ fmap fst clusterParas
                                      , trueClusters = [ clusterIdx HM.! s | (s, _p) <- clusterParas ]
@@ -268,7 +272,7 @@ exportEntityLinkAnnotations outPath _prov pagesToExport = do
 
 main :: IO ()
 main = do
-    (path, names, pageIds1, exporters) <- execParser' 3 (helper <*> options) mempty
+    (path, names, pageIds1, exporters) <- execParser' 4 (helper <*> options) mempty
 --     anns <- openAnnotations path
 --     (prov, _) <- readPagesFileWithProvenance path
 --     nameMap <- CARN.openNameToIdMap path

@@ -12,7 +12,7 @@ import qualified Data.HashMap.Strict as HM
 import Data.List
 import System.FilePath
 
-import qualified Data.Text as T
+
 import qualified Data.Text.Lazy as TL
 
 
@@ -20,11 +20,8 @@ import Options.Applicative
 
 import CAR.Types hiding (transform)
 import CAR.ToolVersion 
-import CAR.CarExports as Exports
 import CAR.AnnotationsFile as AnnsFile
-import CAR.QRelFile
 import CAR.Utils (pageParasWithPaths, paraLinks, paraToText, pageParas)
-import Data.ByteString.Char8 (hPutStrLn)
 
 
 -- Cluster benchmark
@@ -39,8 +36,6 @@ import CAR.CarJSON
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import qualified Codec.Compression.GZip as GZip
-import Codec.Compression.Zlib.Internal (DecompressError)
-import CAR.Types.AST (SectionPath(SectionPath))
 
 
 
@@ -184,7 +179,8 @@ exportClusterParagraphAnnotations cutSectionPath outPath _prov pagesToExport = d
 
 
 data EntityLinkingBenchmark = EntityLinkingBenchmark 
-                            { query :: PageId
+                            { queryId :: PageId
+                            , queryText :: PageName
                             , paragraphId :: ParagraphId
                             , textOnlyParagraph :: Paragraph
                             , trueLinkedParagraph :: Paragraph
@@ -192,6 +188,8 @@ data EntityLinkingBenchmark = EntityLinkingBenchmark
                             }
   deriving (Show, Eq)
 
+k_QUERY_ID = "query_id"
+k_QUERY_TEXT = "query_text"
 k_PARAGRAPH_ID = "paragraph_id"
 k_TEXT_ONLY_PARAGRAPH = "text_only_paragraph"
 k_TRUE_LINKED_PARAGRAPH = "true_linked_paragraph"
@@ -201,7 +199,8 @@ k_TRUE_LABEL_PAGE_IDS = "true_label_page_ids"
 instance Aeson.ToJSON (EntityLinkingBenchmark) where 
     toJSON (EntityLinkingBenchmark{..}) = 
       Aeson.object 
-      $ [ k_QUERY .= S query
+      $ [ k_QUERY_ID .= S queryId
+        , k_QUERY_TEXT .= S queryText
         , k_PARAGRAPH_ID .= S paragraphId
         , k_TEXT_ONLY_PARAGRAPH .= S textOnlyParagraph
         , k_TRUE_LINKED_PARAGRAPH .= S trueLinkedParagraph
@@ -211,7 +210,8 @@ instance Aeson.ToJSON (EntityLinkingBenchmark) where
 
 instance Aeson.FromJSON (EntityLinkingBenchmark) where
     parseJSON = Aeson.withObject "S EntityLinkingBenchmark" $ \content -> do
-        S query <- content .: k_QUERY 
+        S queryId <- content .: k_QUERY_ID 
+        S queryText <- content .: k_QUERY_TEXT 
         S paragraphId <- content .: k_PARAGRAPH_ID
         S textOnlyParagraph <- content .: k_TEXT_ONLY_PARAGRAPH
         S trueLinkedParagraph <- content .: k_TRUE_LINKED_PARAGRAPH
@@ -222,7 +222,8 @@ instance Aeson.FromJSON (EntityLinkingBenchmark) where
 
 printEntityLinkingBenchmark :: EntityLinkingBenchmark -> String
 printEntityLinkingBenchmark EntityLinkingBenchmark{..} = 
-  "query: " <>  (unpackPageId query) <>
+  "queryId: " <>  (unpackPageId queryId) <>
+  "queryText: " <>  (unpackPageName queryText) <>
   "\n paragraphId: "<> (unpackParagraphId paragraphId) <>
   "\n textOnlyParagraph" <> (show textOnlyParagraph) <>
   "\n trueLinkedParagraph" <> (show trueLinkedParagraph) <>
@@ -251,7 +252,8 @@ exportEntityLinkAnnotations outPath _prov pagesToExport = do
                 entityIds = fmap linkTargetId $ paraLinks paragraph
 
                 entityLinkingBenchmark = EntityLinkingBenchmark {
-                                        query = pageId page
+                                        queryId = pageId page
+                                        , queryText = pageName page
                                         , paragraphId = paraId paragraph
                                         , textOnlyParagraph = textOnlyParagraph 
                                         , trueLinkedParagraph = paragraph
@@ -266,7 +268,7 @@ exportEntityLinkAnnotations outPath _prov pagesToExport = do
 
 main :: IO ()
 main = do
-    (path, names, pageIds1, exporters) <- execParser' 2 (helper <*> options) mempty
+    (path, names, pageIds1, exporters) <- execParser' 3 (helper <*> options) mempty
 --     anns <- openAnnotations path
 --     (prov, _) <- readPagesFileWithProvenance path
 --     nameMap <- CARN.openNameToIdMap path

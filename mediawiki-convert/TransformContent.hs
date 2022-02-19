@@ -150,7 +150,7 @@ isCategoriesPara (Para (Paragraph _ paraBody)) =
   where
     isCategoryLinks :: ParaBody -> Bool
     isCategoryLinks (ParaText _) = False
-    isCategoryLinks (ParaLink (Link (PageName name) _ _ _)) =
+    isCategoryLinks (ParaLink Link {linkTarget = (PageName name)}) =
       "Category:" `T.isPrefixOf` name
 isCategoriesPara _ = False
 

@@ -65,6 +65,7 @@ instance  FromJSON ParaBody where
             linkTargetId <- packPageId <$> o .: "entity"
             linkAnchor <- o .: "text"
             linkTarget <- packPageName <$> o .: "entity_name"
+            linkTargetQid <- o .:? "entity_qid"
             return $ ParaLink $ Link {..}
         text = (withObject "ParaText" $ \o -> ParaText <$> o .: "text") v
 

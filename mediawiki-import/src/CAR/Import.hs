@@ -164,7 +164,7 @@ toParaBody siteId thisPage = go
                   | isSelfLink = thisPage
                   | otherwise  = pageNameToId siteId  linkTarget
                 linkAnchor   = resolveEntities t
-            in Just [ParaLink $ Link {..}]
+            in Just [ParaLink $ Link {linkTargetQid=Nothing,..}]
       where
         page = convertPageName $ linkTargetPage target
         t = case parts of

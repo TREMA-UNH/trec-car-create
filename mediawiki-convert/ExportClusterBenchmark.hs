@@ -36,6 +36,7 @@ import CAR.CarJSON
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import qualified Codec.Compression.GZip as GZip
+import CAR.NameToIdMap (NameToQidMap(..), openRNameToQidMap'')
 
 
 
@@ -60,6 +61,7 @@ options =
 ----- entity-linking ------
         , exportEntityLinkAnnotations 
           <$> option str (long "entity-linking" <> metavar "OUTPUT" <> help "Export entity linking ground truth for paragraphs")
+          <*> option str (long "qid2name" <> metavar "TOC.qid2name" <> help "TOC file to convert page titles to qids")
 ------
         ]
 
@@ -194,6 +196,7 @@ data EntityLinkingBenchmark = EntityLinkingBenchmark
                             , textOnlyParagraph :: Paragraph
                             , trueLinkedParagraph :: Paragraph
                             , trueLabelPageIds :: [PageId]
+                            , trueLabelQids :: [WikiDataId]
                             }
   deriving (Show, Eq)
 
@@ -203,6 +206,7 @@ k_PARAGRAPH_ID = "paragraph_id"
 k_TEXT_ONLY_PARAGRAPH = "text_only_paragraph"
 k_TRUE_LINKED_PARAGRAPH = "true_linked_paragraph"
 k_TRUE_LABEL_PAGE_IDS = "true_label_page_ids"
+k_TRUE_LABEL_QIDS = "true_label_qids"
 
 
 instance Aeson.ToJSON (EntityLinkingBenchmark) where 
@@ -214,6 +218,7 @@ instance Aeson.ToJSON (EntityLinkingBenchmark) where
         , k_TEXT_ONLY_PARAGRAPH .= S textOnlyParagraph
         , k_TRUE_LINKED_PARAGRAPH .= S trueLinkedParagraph
         , k_TRUE_LABEL_PAGE_IDS .= fmap S trueLabelPageIds
+        , k_TRUE_LABEL_QIDS .= trueLabelQids -- use native JSON representation
         ] 
       
 
@@ -225,6 +230,7 @@ instance Aeson.FromJSON (EntityLinkingBenchmark) where
         S textOnlyParagraph <- content .: k_TEXT_ONLY_PARAGRAPH
         S trueLinkedParagraph <- content .: k_TRUE_LINKED_PARAGRAPH
         trueLabelPageIds <- unwrapS <$> content .: k_TRUE_LABEL_PAGE_IDS
+        trueLabelQids <- content .: k_TRUE_LABEL_QIDS  -- use native JSON representation
         return $ EntityLinkingBenchmark {..}
 
 
@@ -236,30 +242,33 @@ printEntityLinkingBenchmark EntityLinkingBenchmark{..} =
   "\n paragraphId: "<> (unpackParagraphId paragraphId) <>
   "\n textOnlyParagraph" <> (show textOnlyParagraph) <>
   "\n trueLinkedParagraph" <> (show trueLinkedParagraph) <>
-  "\n trueLabelPageIds" <> (show $ fmap unpackPageId trueLabelPageIds)
+  "\n trueLabelPageIds" <> (show $ fmap unpackPageId trueLabelPageIds) <>
+  "\n trueLabelQids" <> (show $ fmap show trueLabelQids)
   
 
 
 
 -- Export cluster ground truth to work with scikit.learn cluster evaluation package
-exportEntityLinkAnnotations :: FilePath -> Exporter
-exportEntityLinkAnnotations outPath _prov pagesToExport = do
+exportEntityLinkAnnotations :: FilePath ->  FilePath ->Exporter
+exportEntityLinkAnnotations nameToQidMapFile  outPath _prov pagesToExport = do
+    nameToQidMap <- openRNameToQidMap'' nameToQidMapFile
     putStr "Writing entity linking benchmark..."
     let benchmarks = filter minEntityLink
-                     [ toEntityLinkingBenchmark page para
+                     [ toEntityLinkingBenchmark nameToQidMap page para
                      | page <- pagesToExport
                      , para <- pageParas page
                      ]
     -- putStrLn $ unlines $ fmap printEntityLinkingBenchmark $ benchmarks
     writeGzJsonLBenchmarkFile outPath benchmarks      
     -- putStrLn "done"
-   where toEntityLinkingBenchmark :: Page -> Paragraph -> EntityLinkingBenchmark   
-         toEntityLinkingBenchmark  page paragraph = 
+   where toEntityLinkingBenchmark :: NameToQidMap -> Page -> Paragraph -> EntityLinkingBenchmark   
+         toEntityLinkingBenchmark  nameToQidMap page paragraph = 
             let textOnly = TL.toStrict $ paraToText paragraph
                 textOnlyParagraph = Paragraph {paraId = paraId paragraph
                                             , paraBody = [ParaText textOnly]
                                             }
                 entityIds = fmap linkTargetId $ paraLinks paragraph
+                entityTitles = fmap linkTarget $ paraLinks paragraph
 
                 entityLinkingBenchmark = EntityLinkingBenchmark {
                                         queryId = pageId page
@@ -268,9 +277,16 @@ exportEntityLinkAnnotations outPath _prov pagesToExport = do
                                         , textOnlyParagraph = textOnlyParagraph 
                                         , trueLinkedParagraph = paragraph
                                         , trueLabelPageIds = entityIds
+                                        , trueLabelQids = lookupQids nameToQidMap entityTitles 
                                         }
             in entityLinkingBenchmark 
-
+         lookupQids :: NameToQidMap -> [PageName] -> [WikiDataId]
+         lookupQids (NameToQidMap m) pageNames =
+             [ qid
+             | pageName <- pageNames
+             , Just qidSet <- pure $ pageName `M.lookup` m
+             , let qid:_ = S.toList qidSet
+             ]
 
          minEntityLink :: EntityLinkingBenchmark -> Bool 
          minEntityLink EntityLinkingBenchmark{..} =

@@ -250,7 +250,7 @@ printEntityLinkingBenchmark EntityLinkingBenchmark{..} =
 
 -- Export cluster ground truth to work with scikit.learn cluster evaluation package
 exportEntityLinkAnnotations :: FilePath ->  FilePath ->Exporter
-exportEntityLinkAnnotations nameToQidMapFile  outPath _prov pagesToExport = do
+exportEntityLinkAnnotations outPath nameToQidMapFile _prov pagesToExport = do
     nameToQidMap <- openRNameToQidMap'' nameToQidMapFile
     putStr "Writing entity linking benchmark..."
     let benchmarks = filter minEntityLink

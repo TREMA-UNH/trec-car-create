@@ -5,18 +5,15 @@
 import Control.Monad
 import Data.Foldable
 import Data.Maybe
+import System.FilePath
+import Options.Applicative
+
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.HashMap.Strict as HM
 import Data.List
-import System.FilePath
-
-
 import qualified Data.Text.Lazy as TL
-
-
-import Options.Applicative
 
 import CAR.Types hiding (transform)
 import CAR.ToolVersion 
@@ -275,18 +272,11 @@ exportEntityLinkAnnotations outPath nameToQidMapFile _prov pagesToExport = do
                                         , queryText = pageName page
                                         , paragraphId = paraId paragraph
                                         , textOnlyParagraph = textOnlyParagraph 
-                                        , trueLinkedParagraph = paragraph
+                                        , trueLinkedParagraph = augmentParagraphWithQids nameToQidMap paragraph 
                                         , trueLabelPageIds = entityIds
-                                        , trueLabelQids = lookupQids nameToQidMap entityTitles 
+                                        , trueLabelQids = concatMap (lookupQidsForPageNames nameToQidMap) entityTitles 
                                         }
             in entityLinkingBenchmark 
-         lookupQids :: NameToQidMap -> [PageName] -> [WikiDataId]
-         lookupQids (NameToQidMap m) pageNames =
-             [ qid
-             | pageName <- pageNames
-             , Just qidSet <- pure $ pageName `M.lookup` m
-             , let qid:_ = S.toList qidSet
-             ]
 
          minEntityLink :: EntityLinkingBenchmark -> Bool 
          minEntityLink EntityLinkingBenchmark{..} =
@@ -294,14 +284,36 @@ exportEntityLinkAnnotations outPath nameToQidMapFile _prov pagesToExport = do
              in numLinks >= 1
 -- -------------------------------------
 
+-- Code for embellishing Paragraph links with Qids.  should ultimately move to Trec-car-create pipeline.
 
+lookupQidsForPageNames :: NameToQidMap -> PageName -> [WikiDataId]
+lookupQidsForPageNames (NameToQidMap m) pageName =
+             [ qid
+             | Just qidSet <- pure $ pageName `M.lookup` m
+             , let qid:_ = S.toList qidSet
+             ]
+
+augmentParagraphWithQids :: NameToQidMap -> Paragraph -> Paragraph 
+augmentParagraphWithQids nameToQidMap p@Paragraph{..} =
+    p{paraBody=fmap (augmentParaBodyWithQids nameToQidMap) paraBody}
+
+
+augmentParaBodyWithQids :: NameToQidMap -> ParaBody -> ParaBody 
+augmentParaBodyWithQids _nameToQidMap t@(ParaText _)  =
+    t
+augmentParaBodyWithQids nameToQidMap (ParaLink link)  =
+    ParaLink $ augmentLinkWithQids nameToQidMap link
+
+augmentLinkWithQids :: NameToQidMap -> Link -> Link
+augmentLinkWithQids nameToQidMap (l@Link {..})  =
+    let qids = lookupQidsForPageNames nameToQidMap linkTarget
+    in l { linkTargetQid = listToMaybe qids}
+
+-- ----------------------------------
 
 main :: IO ()
 main = do
     (path, names, pageIds1, exporters) <- execParser' 4 (helper <*> options) mempty
---     anns <- openAnnotations path
---     (prov, _) <- readPagesFileWithProvenance path
---     nameMap <- CARN.openNameToIdMap path
     pageBundle <- openPageBundle path
 
 

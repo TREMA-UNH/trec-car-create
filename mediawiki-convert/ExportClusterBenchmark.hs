@@ -313,7 +313,7 @@ augmentLinkWithQids nameToQidMap (l@Link {..})  =
 
 main :: IO ()
 main = do
-    (path, names, pageIds1, exporters) <- execParser' 4 (helper <*> options) mempty
+    (path, names, pageIds1, exporters) <- execParser' 5 (helper <*> options) mempty
     pageBundle <- openPageBundle path
 
 

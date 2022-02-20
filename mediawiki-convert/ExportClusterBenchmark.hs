@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 import Control.Monad
 import Data.Foldable
@@ -194,6 +195,9 @@ data EntityLinkingBenchmark = EntityLinkingBenchmark
                             , trueLinkedParagraph :: Paragraph
                             , trueLabelPageIds :: [PageId]
                             , trueLabelQids :: [WikiDataId]
+                            , acceptableLabelQids :: [WikiDataId]
+                            , acceptableLabelPageIds :: [PageId]
+
                             }
   deriving (Show, Eq)
 
@@ -204,6 +208,8 @@ k_TEXT_ONLY_PARAGRAPH = "text_only_paragraph"
 k_TRUE_LINKED_PARAGRAPH = "true_linked_paragraph"
 k_TRUE_LABEL_PAGE_IDS = "true_label_page_ids"
 k_TRUE_LABEL_QIDS = "true_label_qids"
+k_ACCEPTABLE_LABEL_QIDS = "acceptable_label_qids"
+k_ACCEPTABLE_LABEL_PAGE_IDS = "acceptable_label_page_ids"
 
 
 instance Aeson.ToJSON (EntityLinkingBenchmark) where 
@@ -216,6 +222,8 @@ instance Aeson.ToJSON (EntityLinkingBenchmark) where
         , k_TRUE_LINKED_PARAGRAPH .= S trueLinkedParagraph
         , k_TRUE_LABEL_PAGE_IDS .= fmap S trueLabelPageIds
         , k_TRUE_LABEL_QIDS .= trueLabelQids -- use native JSON representation
+        , k_ACCEPTABLE_LABEL_PAGE_IDS .= fmap S acceptableLabelPageIds
+        , k_ACCEPTABLE_LABEL_QIDS .= acceptableLabelQids -- use native JSON representation
         ] 
       
 
@@ -228,6 +236,8 @@ instance Aeson.FromJSON (EntityLinkingBenchmark) where
         S trueLinkedParagraph <- content .: k_TRUE_LINKED_PARAGRAPH
         trueLabelPageIds <- unwrapS <$> content .: k_TRUE_LABEL_PAGE_IDS
         trueLabelQids <- content .: k_TRUE_LABEL_QIDS  -- use native JSON representation
+        acceptableLabelPageIds <- unwrapS <$> content .: k_ACCEPTABLE_LABEL_PAGE_IDS
+        acceptableLabelQids <- content .: k_ACCEPTABLE_LABEL_QIDS  -- use native JSON representation
         return $ EntityLinkingBenchmark {..}
 
 
@@ -240,7 +250,9 @@ printEntityLinkingBenchmark EntityLinkingBenchmark{..} =
   "\n textOnlyParagraph" <> (show textOnlyParagraph) <>
   "\n trueLinkedParagraph" <> (show trueLinkedParagraph) <>
   "\n trueLabelPageIds" <> (show $ fmap unpackPageId trueLabelPageIds) <>
-  "\n trueLabelQids" <> (show $ fmap show trueLabelQids)
+  "\n trueLabelQids" <> (show $ fmap show trueLabelQids) <>
+  "\n acceptableLabelPageIds" <> (show $ fmap unpackPageId acceptableLabelPageIds) <>
+  "\n acceptableLabelQids" <> (show $ fmap show acceptableLabelQids)
   
 
 
@@ -250,15 +262,37 @@ exportEntityLinkAnnotations :: FilePath ->  FilePath ->Exporter
 exportEntityLinkAnnotations outPath nameToQidMapFile _prov pagesToExport = do
     nameToQidMap <- openRNameToQidMap'' nameToQidMapFile
     putStr "Writing entity linking benchmark..."
+
     let benchmarks = filter minEntityLink
-                     [ toEntityLinkingBenchmark nameToQidMap page para
+                     [ mark
                      | page <- pagesToExport
-                     , para <- pageParas page
+                     , mark <- pageToEntityLinkingBenchmark nameToQidMap page
                      ]
+
     -- putStrLn $ unlines $ fmap printEntityLinkingBenchmark $ benchmarks
     writeGzJsonLBenchmarkFile outPath benchmarks      
     -- putStrLn "done"
-   where toEntityLinkingBenchmark :: NameToQidMap -> Page -> Paragraph -> EntityLinkingBenchmark   
+   where pageToEntityLinkingBenchmark :: NameToQidMap -> Page -> [EntityLinkingBenchmark]
+         pageToEntityLinkingBenchmark  nameToQidMap page =
+             let marks = fmap (toEntityLinkingBenchmark nameToQidMap page) $ pageParas page
+                 marksWithQids = [ mark{acceptableLabelQids = prevEntities}
+                                 | (mark, prevEntities) <- accumPrevList trueLabelQids marks
+                                 ]
+                 marksWithPageIds = [ mark{acceptableLabelPageIds = prevEntities}
+                                    | (mark, prevEntities) <- accumPrevList trueLabelPageIds marksWithQids
+                                    ]
+             in marksWithPageIds
+
+           where accumPrevList :: forall a b . Ord b => (a -> [b]) -> [a] -> [(a,[b])]
+                 accumPrevList f lst =
+                     let accum :: [[b]]
+                         accum =
+                            fmap (S.toList . S.fromList)
+                            $ scanl1 (<>) 
+                            $ fmap f lst
+                     in zip lst accum
+
+         toEntityLinkingBenchmark :: NameToQidMap -> Page -> Paragraph -> EntityLinkingBenchmark   
          toEntityLinkingBenchmark  nameToQidMap page paragraph = 
             let textOnly = TL.toStrict $ paraToText paragraph
                 textOnlyParagraph = Paragraph {paraId = paraId paragraph
@@ -275,6 +309,8 @@ exportEntityLinkAnnotations outPath nameToQidMapFile _prov pagesToExport = do
                                         , trueLinkedParagraph = augmentParagraphWithQids nameToQidMap paragraph 
                                         , trueLabelPageIds = entityIds
                                         , trueLabelQids = concatMap (lookupQidsForPageNames nameToQidMap) entityTitles 
+                                        , acceptableLabelPageIds = []
+                                        , acceptableLabelQids = []
                                         }
             in entityLinkingBenchmark 
 
@@ -313,7 +349,7 @@ augmentLinkWithQids nameToQidMap (l@Link {..})  =
 
 main :: IO ()
 main = do
-    (path, names, pageIds1, exporters) <- execParser' 6 (helper <*> options) mempty
+    (path, names, pageIds1, exporters) <- execParser' 7 (helper <*> options) mempty
     pageBundle <- openPageBundle path
 
 
